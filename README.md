@@ -1,9 +1,6 @@
 
 # [Run and deploy your AI Studio app](https://opendota-cf-worker.pages.dev/)
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/af08e5b1-2f50-4763-a902-cb379f7aa13f
 
 ## Run Locally
 
