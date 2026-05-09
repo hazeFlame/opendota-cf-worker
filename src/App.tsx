@@ -20,9 +20,11 @@ import {
   ChevronRight,
   Plus,
   Zap,
-  Clock
+  Clock,
+  MessageCircle
 } from "lucide-react";
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
+import Guestbook from "./Guestbook";
 
 // --- Types ---
 interface PlayerProfile {
@@ -134,10 +136,16 @@ export default function SafeApp() {
 }
 
 function App() {
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
   const [searchId, setSearchId] = useState("843948879");
   const [player, setPlayer] = useState<PlayerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, "", path);
+    setCurrentPath(path);
+  };
 
   const fetchPlayerData = async (id: string) => {
     if (!id || id.trim() === "") {
@@ -152,7 +160,7 @@ function App() {
         if (response.status === 404) throw new Error("Player profile not found in database.");
         throw new Error(`API returned error status: ${response.status}`);
       }
-      const data = await response.json();
+      const data = await response.json() as PlayerData;
       
       // Defensive check: verify the essential data structure exists
       if (!data || !data.profile) {
@@ -170,8 +178,16 @@ function App() {
   };
 
   useEffect(() => {
-    fetchPlayerData(searchId);
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (currentPath !== "/guestbook") {
+      fetchPlayerData(searchId);
+    }
+  }, [currentPath]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,6 +195,10 @@ function App() {
   };
 
   const rank = getRankDetails(player?.rank_tier || null);
+
+  if (currentPath === "/guestbook") {
+    return <Guestbook onNavigateHome={() => navigate("/")} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F6F8FA] text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
@@ -204,6 +224,14 @@ function App() {
               className="w-full bg-gray-50 border border-transparent rounded-2xl py-3 pl-11 pr-4 text-sm focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-600 transition-all shadow-inner"
             />
           </form>
+
+          <button
+            onClick={() => navigate("/guestbook")}
+            className="hidden sm:flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-100 text-gray-700 rounded-2xl font-bold text-sm hover:bg-white hover:border-gray-200 hover:text-blue-600 transition-all"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Guestbook
+          </button>
 
           <div className="hidden md:flex items-center gap-2 pr-2">
             <div className="flex -space-x-2">
@@ -395,4 +423,3 @@ function App() {
     </div>
   );
 }
-

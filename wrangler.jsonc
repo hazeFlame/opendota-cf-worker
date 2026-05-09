@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "opendota-cf-worker",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-05-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "ea148e80f17b9e090c04daf8dbc5fa00",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "opendota-guestbook",
+      "database_id": "2b68c2e2-f51f-4e48-87de-d73692c47d53"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "GUESTBOOK_CACHE",
+      "id": "5fe3c8c6213340f6a9799973aa5002c6"
+    }
+  ]
+}
