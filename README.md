@@ -1,5 +1,5 @@
 
-# [Run and deploy your AI Studio app](https://opendota-cf-worker.pages.dev/)
+# [https://opendota-cf-worker.pages.dev/](https://opendota-cf-worker.pages.dev/)
 
 
 ## Run Locally
