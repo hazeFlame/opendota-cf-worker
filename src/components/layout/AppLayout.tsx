@@ -18,13 +18,13 @@ export function AppLayout({
   hideShell = false
 }: AppLayoutProps) {
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#0F1115] text-gray-100' : 'bg-[#F8FAFC] text-slate-900'} font-sans selection:bg-indigo-500/30 transition-colors duration-500 overflow-x-hidden`}>
+    <div className={`flex flex-col min-h-screen ${isDark ? 'bg-[#0F1115] text-gray-100' : 'bg-[#F8FAFC] text-slate-900'} font-sans selection:bg-indigo-500/30 transition-colors duration-500 overflow-x-hidden relative`}>
       <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
         <BackgroundBeams />
       </div>
 
       {!hideShell && (
-        <nav className={`sticky top-0 z-50 ${isDark ? 'bg-[#16191F]/80 border-white/5' : 'bg-white/80 border-slate-200'} backdrop-blur-xl border-b transition-colors duration-500`}>
+        <nav className={`sticky top-0 z-50 ${isDark ? 'bg-[#16191F]/80 border-white/5' : 'bg-white/80 border-slate-200'} backdrop-blur-xl border-b transition-colors duration-500 shrink-0`}>
           <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between gap-8">
             <div 
               className="flex items-center gap-3 shrink-0 cursor-pointer"
@@ -66,12 +66,12 @@ export function AppLayout({
         </nav>
       )}
 
-      <main className={`relative z-10 ${hideShell ? 'h-screen' : ''}`}>
+      <main className={`relative z-10 flex-1 ${hideShell ? 'h-screen' : ''}`}>
         {children}
       </main>
 
       {!hideShell && (
-        <footer className={`max-w-6xl mx-auto px-6 py-20 text-center border-t ${isDark ? 'border-white/5' : 'border-slate-100'} mt-20 transition-colors duration-500`}>
+        <footer className={`max-w-6xl mx-auto w-full px-6 py-20 text-center border-t ${isDark ? 'border-white/5' : 'border-slate-100'} mt-20 transition-colors duration-500 shrink-0`}>
           <p className={`text-[10px] font-black uppercase tracking-[0.8em] mb-4 select-none ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>分布式分析平台</p>
           <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-800' : 'text-slate-200'}`}>© 2026 NEURAL LINK PROTOCOL</p>
         </footer>

@@ -194,6 +194,7 @@ function App() {
                 isDark={isDark}
                 toggleTheme={toggleTheme}
                 initialCharacterId={characterId}
+                onNavigate={navigate}
                 onNavigateHome={() => navigate("/")}
                 onNavigateGuestbook={() => navigate("/guestbook")}
               />
@@ -357,6 +358,7 @@ function App() {
               key="rolechat"
               isDark={isDark}
               toggleTheme={toggleTheme}
+              onNavigate={navigate}
               onNavigateHome={() => navigate("/")}
               onNavigateGuestbook={() => navigate("/guestbook")}
             />

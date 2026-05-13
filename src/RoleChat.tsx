@@ -11,12 +11,14 @@ type RoleChatProps = {
   isDark: boolean;
   toggleTheme: () => void;
   initialCharacterId?: string;
+  onNavigate: (path: string) => void;
 };
 
 export default function RoleChat({ 
   isDark, 
   toggleTheme, 
   initialCharacterId, 
+  onNavigate,
   onNavigateHome, 
   onNavigateGuestbook 
 }: RoleChatProps) {
@@ -112,7 +114,7 @@ export default function RoleChat({
         setConversation(null);
         setInitialMessages([]);
         setLinkingCharacterId(null);
-        window.history.pushState(null, "", "/");
+        onNavigate("/");
       }
     } catch (err) {
       console.error(err);
@@ -129,7 +131,7 @@ export default function RoleChat({
     setInitialMessages([]);
     setLinkingCharacterId(character.id);
     setError(null);
-    window.history.pushState(null, "", `/chat/${character.id}`);
+    onNavigate(`/chat/${character.id}`);
     try {
       const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`));
       const existingData = await existingResponse.json() as ConversationResponse;
@@ -165,7 +167,7 @@ export default function RoleChat({
   const isBootstrapping = initialCharacterId && loading && !selectedCharacter;
 
   return (
-    <div className="relative min-h-screen w-full max-w-[1800px] mx-auto flex flex-col px-4 sm:px-6 pt-8 md:pt-14 pb-8">
+    <div className="relative flex-1 w-full max-w-[1800px] mx-auto flex flex-col px-4 sm:px-6 pt-8 md:pt-14 pb-8">
       <AnimatePresence mode="wait">
         {isBootstrapping ? (
           <motion.div
@@ -216,7 +218,7 @@ export default function RoleChat({
               if (onNavigateHome) {
                 onNavigateHome();
               } else {
-                window.history.pushState(null, "", "/");
+                onNavigate("/");
               }
             }}
           />
