@@ -218,6 +218,19 @@ function App() {
 
   const rank = getRankDetails(player?.rank_tier || null);
 
+  if (currentPath.startsWith("/chat/")) {
+    const characterId = currentPath.split("/")[2];
+    return (
+      <RoleChat 
+        onNavigateHome={() => navigate("/")} 
+        onNavigateGuestbook={() => navigate("/guestbook")}
+        isDark={isDark}
+        toggleTheme={toggleTheme}
+        initialCharacterId={characterId}
+      />
+    );
+  }
+
   if (currentPath === "/guestbook") {
     return (
       <Guestbook 
@@ -228,19 +241,15 @@ function App() {
     );
   }
 
-  if (currentPath === "/dota") {
-    // We will keep the Dota dashboard here for now, but the home page is now RoleChat
-  } else {
-    // Default to RoleChat for / and any other undefined routes
-    return (
-      <RoleChat 
-        onNavigateHome={() => navigate("/")} 
-        onNavigateGuestbook={() => navigate("/guestbook")}
-        isDark={isDark}
-        toggleTheme={toggleTheme}
-      />
-    );
-  }
+  // Default to RoleChat for / and any other undefined routes
+  return (
+    <RoleChat 
+      onNavigateHome={() => navigate("/")} 
+      onNavigateGuestbook={() => navigate("/guestbook")}
+      isDark={isDark}
+      toggleTheme={toggleTheme}
+    />
+  );
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#0F1115] text-gray-100' : 'bg-[#F8FAFC] text-slate-900'} font-sans selection:bg-indigo-500/30 selection:text-indigo-200 transition-colors duration-500`}>

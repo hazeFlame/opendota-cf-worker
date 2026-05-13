@@ -14,7 +14,8 @@ import {
   UserRound,
   Sun,
   Moon,
-  ChevronRight
+  ChevronRight,
+  History as HistoryIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import React, { useEffect, useMemo, useState } from "react";
@@ -35,12 +36,12 @@ type Conversation = {
   title: string;
   createdAt: string;
 };
-
 type RoleChatProps = {
   onNavigateHome: () => void;
   onNavigateGuestbook: () => void;
   isDark: boolean;
   toggleTheme: () => void;
+  initialCharacterId?: string;
 };
 
 type CharactersResponse = {
@@ -75,7 +76,7 @@ const messageText = (message: UIMessage) => {
     .join("");
 };
 
-export default function RoleChat({ onNavigateHome, onNavigateGuestbook, isDark, toggleTheme }: RoleChatProps) {
+export default function RoleChat({ onNavigateHome, onNavigateGuestbook, isDark, toggleTheme, initialCharacterId }: RoleChatProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -108,6 +109,15 @@ export default function RoleChat({ onNavigateHome, onNavigateGuestbook, isDark, 
     loadCharacters();
   }, []);
 
+  useEffect(() => {
+    if (initialCharacterId && characters.length > 0) {
+      const char = characters.find(c => c.id === initialCharacterId);
+      if (char) {
+        startConversation(char);
+      }
+    }
+  }, [initialCharacterId, characters]);
+
   const createCharacter = async (event: React.FormEvent) => {
     event.preventDefault();
     if (creating) return;
@@ -138,8 +148,10 @@ export default function RoleChat({ onNavigateHome, onNavigateGuestbook, isDark, 
   };
 
   const startConversation = async (character: Character) => {
+    setSelectedCharacter(character);
     setStartingChat(true);
     setError(null);
+    window.history.pushState(null, "", `/chat/${character.id}`);
     try {
       const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`));
       const existingData = await existingResponse.json() as ConversationResponse;
@@ -396,81 +408,76 @@ export default function RoleChat({ onNavigateHome, onNavigateGuestbook, isDark, 
           ) : (
             <motion.div
               key="chat"
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.02 }}
-              className="h-full flex flex-col xl:flex-row gap-8 overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex bg-black overflow-hidden"
             >
-              {/* Dialogue Side - Character Personality */}
-              <aside className={`xl:w-[450px] ${isDark ? 'bg-[#1C2026]/50 border-white/5 shadow-2xl' : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50'} backdrop-blur-xl rounded-[48px] border flex flex-col shrink-0 overflow-hidden transition-colors duration-500`}>
-                <div className="p-8 md:p-12 overflow-y-auto custom-scrollbar flex-1">
-                  <button 
-                    onClick={() => {
-                      setSelectedCharacter(null);
-                      setConversation(null);
-                    }}
-                    className={`flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.3em] ${isDark ? 'text-slate-500 hover:text-white' : 'text-slate-400 hover:text-slate-900'} transition-colors mb-12 group`}
-                  >
-                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    返回控制台
-                  </button>
+              {/* Minimalist Side Bar */}
+              <aside className={`w-[80px] md:w-[100px] h-full flex flex-col items-center py-10 border-r ${isDark ? 'bg-[#0F1115] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500 shrink-0`}>
+                <button 
+                  onClick={() => {
+                    setSelectedCharacter(null);
+                    setConversation(null);
+                    window.history.pushState(null, "", "/");
+                  }}
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10' : 'bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200'} transition-all mb-12`}
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
 
-                  <div className={`w-24 h-24 ${isDark ? 'bg-indigo-600/20 border-indigo-500/30 shadow-inner' : 'bg-indigo-50 border-indigo-100 shadow-sm'} rounded-[40px] flex items-center justify-center border mb-10`}>
-                    <Bot className="w-12 h-12 text-indigo-500" />
+                <div className="flex-1 flex flex-col items-center gap-8">
+                  <div className={`w-14 h-14 md:w-16 md:h-16 ${isDark ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-100 shadow-sm'} rounded-3xl flex items-center justify-center border relative group`}>
+                    <Bot className="w-8 h-8 text-indigo-500" />
+                    <div className="absolute left-full ml-4 px-3 py-1.5 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                      {selectedCharacter.name}
+                    </div>
                   </div>
 
-                  <h2 className={`text-4xl md:text-5xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'} mb-8 leading-none uppercase`}>
-                    {selectedCharacter.name}
-                  </h2>
-
-                  <div className="space-y-10">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500 mb-4">核心人格协议</p>
-                      <div className={`p-8 rounded-[32px] ${isDark ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-100 shadow-inner'} border text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'} font-medium`}>
-                        {selectedCharacter.persona}
-                      </div>
-                    </div>
-
-                    {selectedCharacter.greeting && (
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-4">初始化语音</p>
-                        <p className={`text-lg italic font-bold tracking-tight ${isDark ? 'text-gray-300' : 'text-slate-700'} pl-6 border-l-4 border-indigo-500/30`}>
-                          "{selectedCharacter.greeting}"
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="pt-10 mt-10 border-t border-slate-500/10 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">神经链接正常</span>
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{new Date(selectedCharacter.createdAt).toLocaleDateString()}</span>
-                    </div>
+                  <div className="w-px h-20 bg-gradient-to-b from-indigo-500/50 to-transparent"></div>
+                  
+                  <div className="flex flex-col gap-6">
+                     <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-colors">
+                        <Activity className="w-5 h-5" />
+                     </button>
+                     <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-500 transition-colors">
+                        <HistoryIcon className="w-5 h-5" />
+                     </button>
                   </div>
                 </div>
+
+                <button 
+                  onClick={toggleTheme}
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 text-yellow-400' : 'bg-slate-100 text-slate-500'} border ${isDark ? 'border-white/5' : 'border-slate-200'} transition-all mt-auto`}
+                >
+                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
               </aside>
 
-              {/* Chat Interface */}
-              <section className={`flex-1 ${isDark ? 'bg-[#16191F]/50 border-white/5 shadow-2xl' : 'bg-white border-slate-200 shadow-2xl shadow-slate-300/50'} backdrop-blur-3xl rounded-[48px] border flex flex-col overflow-hidden relative transition-colors duration-500`}>
-                <div className={`p-8 md:p-10 border-b ${isDark ? 'border-white/5 bg-[#1C2026]/40' : 'border-slate-100 bg-slate-50/50'} flex items-center justify-between gap-6 transition-colors duration-500`}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500">
-                        正在进行实时通信
-                      </p>
-                    </div>
-                    <h2 className={`text-3xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'} truncate`}>
-                      对话中心
+              {/* Main Dialogue Content */}
+              <div className="flex-1 flex flex-col h-full min-w-0">
+                <header className={`h-20 px-8 flex items-center justify-between border-b ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500`}>
+                  <div className="flex items-center gap-6 min-w-0">
+                    <h2 className={`text-xl md:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'} truncate uppercase`}>
+                      {selectedCharacter.name}
                     </h2>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-green-500">连接中</span>
+                    </div>
                   </div>
-                  <div className={`w-16 h-16 ${isDark ? 'bg-indigo-600/20 border-indigo-500/20 shadow-inner' : 'bg-indigo-50 border-indigo-100 shadow-sm'} rounded-[24px] flex items-center justify-center shrink-0 border`}>
-                    <Sparkles className="w-8 h-8 text-indigo-500" />
-                  </div>
-                </div>
 
-                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="flex items-center gap-4">
+                    <p className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      性格模组: {selectedCharacter.persona.slice(0, 30)}...
+                    </p>
+                    <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'} border flex items-center justify-center`}>
+                      <Sparkles className="w-5 h-5 text-indigo-500" />
+                    </div>
+                  </div>
+                </header>
+
+                <div className={`flex-1 overflow-hidden flex flex-col ${isDark ? 'bg-[#0F1115]' : 'bg-[#F8FAFC]'}`}>
                   <ConversationPanel
                     key={conversation?.id || "empty"}
                     conversation={conversation}
@@ -479,7 +486,24 @@ export default function RoleChat({ onNavigateHome, onNavigateGuestbook, isDark, 
                     isDark={isDark}
                   />
                 </div>
-              </section>
+              </div>
+
+              {/* Persona Detail (Floating or Overlay if mobile, Side for desktop) */}
+              <div className={`hidden 2xl:flex w-[400px] h-full flex-col p-10 border-l ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500 overflow-y-auto custom-scrollbar`}>
+                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500 mb-6">实体底层协议</p>
+                 <div className={`p-8 rounded-[32px] ${isDark ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-100 shadow-inner'} border text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'} font-medium mb-10`}>
+                    {selectedCharacter.persona}
+                 </div>
+                 
+                 {selectedCharacter.greeting && (
+                   <>
+                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500 mb-6">核心触发响应</p>
+                     <p className={`text-lg italic font-bold tracking-tight ${isDark ? 'text-gray-300' : 'text-slate-700'} pl-6 border-l-4 border-indigo-500/30`}>
+                       "{selectedCharacter.greeting}"
+                     </p>
+                   </>
+                 )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
