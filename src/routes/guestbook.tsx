@@ -1,3 +1,4 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Activity,
@@ -13,9 +14,10 @@ import {
   Moon
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
-import { BackgroundBeams } from "./components/ui/background-beams";
-import { Button as MovingBorderButton } from "./components/ui/moving-border";
+import { useApp } from "../context/AppContext";
+import { Button as MovingBorderButton } from "../components/ui/moving-border";
 
+// --- Types & Helpers ---
 type GuestbookMessage = {
   id: number;
   displayName: string;
@@ -33,12 +35,6 @@ type CreateMessageResponse = {
   message?: GuestbookMessage;
 };
 
-type GuestbookProps = {
-  onNavigateHome: () => void;
-  isDark: boolean;
-  toggleTheme: () => void;
-};
-
 const formatDate = (value: string) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "刚刚";
@@ -52,7 +48,15 @@ const formatDate = (value: string) => {
 
 const apiPath = (path: string) => `${import.meta.env.VITE_GUESTBOOK_API_BASE || ""}${path}`;
 
-export default function Guestbook({ onNavigateHome, isDark, toggleTheme }: GuestbookProps) {
+// --- Route Definition ---
+export const Route = createFileRoute("/guestbook")({
+  component: GuestbookPage,
+});
+
+function GuestbookPage() {
+  const { isDark, toggleTheme } = useApp();
+  const navigate = useNavigate();
+  
   const [messages, setMessages] = useState<GuestbookMessage[]>([]);
   const [displayName, setDisplayName] = useState("");
   const [message, setMessage] = useState("");

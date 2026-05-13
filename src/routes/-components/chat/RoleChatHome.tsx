@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Bot, Sparkles, Loader2, UserRound, Trash2, ChevronRight } from "lucide-react";
-import { Button as MovingBorderButton } from "../ui/moving-border";
+import { Button as MovingBorderButton } from "../../../components/ui/moving-border";
 import { type Character } from "./types";
 
 type RoleChatHomeProps = {

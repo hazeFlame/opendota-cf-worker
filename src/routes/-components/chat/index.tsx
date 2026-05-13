@@ -1,32 +1,36 @@
 import { type UIMessage } from "ai";
 import { motion, AnimatePresence } from "motion/react";
 import React, { useEffect, useRef, useState } from "react";
-import { RoleChatHome } from "./components/role-chat/RoleChatHome";
-import { RoleChatDialogue } from "./components/role-chat/RoleChatDialogue";
-import { apiPath, type Character, type Conversation, type ConversationResponse, type CharactersResponse, type CharacterResponse } from "./components/role-chat/types";
+import { useParams, useNavigate } from "@tanstack/react-router";
+import { RoleChatHome } from "./RoleChatHome";
+import { RoleChatDialogue } from "./RoleChatDialogue";
+import { apiPath, type Character, type Conversation, type ConversationResponse, type CharactersResponse, type CharacterResponse } from "./types";
 
 type RoleChatProps = {
-  onNavigateHome: () => void;
-  onNavigateGuestbook: () => void;
   isDark: boolean;
   toggleTheme: () => void;
-  initialCharacterId?: string;
-  onNavigate: (path: string) => void;
+  characters: Character[];
+  loading: boolean;
+  onRefreshCharacters: () => void;
+  // Kept for compatibility but will prefer internal hooks
+  onNavigateHome?: () => void;
+  onNavigateGuestbook?: () => void;
 };
 
 export default function RoleChat({ 
   isDark, 
   toggleTheme, 
-  initialCharacterId, 
-  onNavigate,
-  onNavigateHome, 
-  onNavigateGuestbook 
+  characters,
+  loading,
+  onRefreshCharacters
 }: RoleChatProps) {
-  const [characters, setCharacters] = useState<Character[]>([]);
+  const { characterId } = useParams({ strict: false }); // Use strict: false for flexibility or 'from' for safety
+  const navigate = useNavigate();
+  
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [internalLoading, setInternalLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [linkingCharacterId, setLinkingCharacterId] = useState<string | null>(null);
@@ -39,32 +43,25 @@ export default function RoleChat({
   const [persona, setPersona] = useState("");
   const [greeting, setGreeting] = useState("");
 
-  const loadCharacters = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(apiPath("/api/characters"));
-      const data = await response.json() as CharactersResponse;
-      setCharacters(data.characters || []);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load entities");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Sync selectedCharacter with characterId from URL
   useEffect(() => {
-    loadCharacters();
-  }, []);
-
-  useEffect(() => {
-    if (initialCharacterId && characters.length > 0) {
-      const char = characters.find(c => c.id === initialCharacterId);
-      if (char && selectedCharacter?.id !== char.id) {
-        startConversation(char);
+    if (characterId && characters.length > 0) {
+      const char = characters.find(c => c.id === characterId);
+      if (char) {
+        if (selectedCharacter?.id !== char.id) {
+          startConversation(char);
+        }
+      } else {
+        // If characterId is invalid, go home
+        navigate({ to: "/" });
       }
+    } else if (!characterId && selectedCharacter) {
+      // If URL is home but state has character, clear state
+      setSelectedCharacter(null);
+      setConversation(null);
+      setInitialMessages([]);
     }
-  }, [initialCharacterId, characters, selectedCharacter?.id]);
+  }, [characterId, characters]);
 
   const createCharacter = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -84,14 +81,14 @@ export default function RoleChat({
       });
       const data = await response.json() as CharacterResponse;
       if (data.character) {
-        setCharacters([data.character, ...characters]);
+        onRefreshCharacters();
         setName("");
         setPersona("");
         setGreeting("");
       }
     } catch (err) {
       console.error(err);
-      setError("Sync failed");
+      setError("同步失败");
     } finally {
       setCreating(false);
     }
@@ -107,14 +104,9 @@ export default function RoleChat({
     setDeletingId(id);
     try {
       await fetch(apiPath(`/api/characters/${id}`), { method: "DELETE" });
-      setCharacters(characters.filter(c => c.id !== id));
-      if (selectedCharacter?.id === id) {
-        activeConversationRequest.current += 1;
-        setSelectedCharacter(null);
-        setConversation(null);
-        setInitialMessages([]);
-        setLinkingCharacterId(null);
-        onNavigate("/");
+      onRefreshCharacters();
+      if (characterId === id) {
+        navigate({ to: "/" });
       }
     } catch (err) {
       console.error(err);
@@ -131,8 +123,14 @@ export default function RoleChat({
     setInitialMessages([]);
     setLinkingCharacterId(character.id);
     setError(null);
-    onNavigate(`/chat/${character.id}`);
+    
+    // Update URL if not already there
+    if (characterId !== character.id) {
+      navigate({ to: "/chat/$characterId", params: { characterId: character.id } });
+    }
+
     try {
+      setInternalLoading(true);
       const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`));
       const existingData = await existingResponse.json() as ConversationResponse;
       if (activeConversationRequest.current !== requestId) return;
@@ -156,15 +154,16 @@ export default function RoleChat({
     } catch (err) {
       console.error(err);
       if (activeConversationRequest.current !== requestId) return;
-      setError("Neural link failed");
+      setError("神经链路连接失败");
     } finally {
       if (activeConversationRequest.current === requestId) {
         setLinkingCharacterId(null);
+        setInternalLoading(false);
       }
     }
   };
 
-  const isBootstrapping = initialCharacterId && loading && !selectedCharacter;
+  const isBootstrapping = characterId && (loading || internalLoading) && !selectedCharacter;
 
   return (
     <div className="relative flex-1 w-full max-w-[1800px] mx-auto flex flex-col px-4 sm:px-6 pt-8 md:pt-14 pb-8">
@@ -183,7 +182,7 @@ export default function RoleChat({
             </div>
             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] animate-pulse">正在初始化神经链路...</p>
           </motion.div>
-        ) : !selectedCharacter ? (
+        ) : !characterId ? (
           <RoleChatHome
             key="home"
             isDark={isDark}
@@ -200,7 +199,7 @@ export default function RoleChat({
             startConversation={startConversation}
             characters={characters.length > 0}
           />
-        ) : (
+        ) : selectedCharacter ? (
           <RoleChatDialogue
             key={`${selectedCharacter.id}:${conversation?.id || "linking"}`}
             selectedCharacter={selectedCharacter}
@@ -209,20 +208,9 @@ export default function RoleChat({
             isLinking={linkingCharacterId === selectedCharacter.id}
             isDark={isDark}
             toggleTheme={toggleTheme}
-            onBack={() => {
-              activeConversationRequest.current += 1;
-              setSelectedCharacter(null);
-              setConversation(null);
-              setInitialMessages([]);
-              setLinkingCharacterId(null);
-              if (onNavigateHome) {
-                onNavigateHome();
-              } else {
-                onNavigate("/");
-              }
-            }}
+            onBack={() => navigate({ to: "/" })}
           />
-        )}
+        ) : null}
       </AnimatePresence>
 
       {error && (
