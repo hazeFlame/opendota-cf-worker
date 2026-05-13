@@ -211,7 +211,7 @@ function App() {
             );
           }
 
-          if (currentPath === "/dota" || player) {
+          if (currentPath === "/dota") {
             if (loading) {
               return (
                 <motion.div 

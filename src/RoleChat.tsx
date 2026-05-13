@@ -1,7 +1,6 @@
 import { type UIMessage } from "ai";
 import { motion, AnimatePresence } from "motion/react";
-import React, { useEffect, useState } from "react";
-import { BackgroundBeams } from "./components/ui/background-beams";
+import React, { useEffect, useRef, useState } from "react";
 import { RoleChatHome } from "./components/role-chat/RoleChatHome";
 import { RoleChatDialogue } from "./components/role-chat/RoleChatDialogue";
 import { apiPath, type Character, type Conversation, type ConversationResponse, type CharactersResponse, type CharacterResponse } from "./components/role-chat/types";
@@ -28,8 +27,10 @@ export default function RoleChat({
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [linkingCharacterId, setLinkingCharacterId] = useState<string | null>(null);
   const [showValidationHint, setShowValidationHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeConversationRequest = useRef(0);
 
   // Form State
   const [name, setName] = useState("");
@@ -57,11 +58,11 @@ export default function RoleChat({
   useEffect(() => {
     if (initialCharacterId && characters.length > 0) {
       const char = characters.find(c => c.id === initialCharacterId);
-      if (char) {
+      if (char && selectedCharacter?.id !== char.id) {
         startConversation(char);
       }
     }
-  }, [initialCharacterId, characters]);
+  }, [initialCharacterId, characters, selectedCharacter?.id]);
 
   const createCharacter = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -97,13 +98,20 @@ export default function RoleChat({
   const deleteCharacter = async (id: string, event: React.MouseEvent) => {
     event.stopPropagation();
     if (deletingId) return;
+    const character = characters.find((item) => item.id === id);
+    const confirmed = window.confirm(`确认删除「${character?.name || "这个角色"}」吗？相关对话记录也会一起删除。`);
+    if (!confirmed) return;
+
     setDeletingId(id);
     try {
       await fetch(apiPath(`/api/characters/${id}`), { method: "DELETE" });
       setCharacters(characters.filter(c => c.id !== id));
       if (selectedCharacter?.id === id) {
+        activeConversationRequest.current += 1;
         setSelectedCharacter(null);
         setConversation(null);
+        setInitialMessages([]);
+        setLinkingCharacterId(null);
         window.history.pushState(null, "", "/");
       }
     } catch (err) {
@@ -114,36 +122,50 @@ export default function RoleChat({
   };
 
   const startConversation = async (character: Character) => {
+    const requestId = activeConversationRequest.current + 1;
+    activeConversationRequest.current = requestId;
     setSelectedCharacter(character);
+    setConversation(null);
+    setInitialMessages([]);
+    setLinkingCharacterId(character.id);
     setError(null);
     window.history.pushState(null, "", `/chat/${character.id}`);
     try {
       const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`));
       const existingData = await existingResponse.json() as ConversationResponse;
+      if (activeConversationRequest.current !== requestId) return;
       
       if (existingData.conversation) {
         setConversation(existingData.conversation);
         setInitialMessages(existingData.messages || []);
       } else {
-        const createResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`), {
+        const createResponse = await fetch(apiPath("/api/chats"), {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ characterId: character.id }),
         });
         const createData = await createResponse.json() as ConversationResponse;
+        if (activeConversationRequest.current !== requestId) return;
         if (createData.conversation) {
           setConversation(createData.conversation);
-          setInitialMessages([]);
+          setInitialMessages(createData.messages || []);
         }
       }
     } catch (err) {
       console.error(err);
+      if (activeConversationRequest.current !== requestId) return;
       setError("Neural link failed");
+    } finally {
+      if (activeConversationRequest.current === requestId) {
+        setLinkingCharacterId(null);
+      }
     }
   };
 
   const isBootstrapping = initialCharacterId && loading && !selectedCharacter;
 
   return (
-    <div className="relative h-full w-full max-w-[1800px] mx-auto flex flex-col pt-12 md:pt-20">
+    <div className="relative min-h-screen w-full max-w-[1800px] mx-auto flex flex-col px-4 sm:px-6 pt-8 md:pt-14 pb-8">
       <AnimatePresence mode="wait">
         {isBootstrapping ? (
           <motion.div
@@ -178,15 +200,19 @@ export default function RoleChat({
           />
         ) : (
           <RoleChatDialogue
-            key="chat"
+            key={`${selectedCharacter.id}:${conversation?.id || "linking"}`}
             selectedCharacter={selectedCharacter}
             conversation={conversation}
             initialMessages={initialMessages}
+            isLinking={linkingCharacterId === selectedCharacter.id}
             isDark={isDark}
             toggleTheme={toggleTheme}
             onBack={() => {
+              activeConversationRequest.current += 1;
               setSelectedCharacter(null);
               setConversation(null);
+              setInitialMessages([]);
+              setLinkingCharacterId(null);
               if (onNavigateHome) {
                 onNavigateHome();
               } else {

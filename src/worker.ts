@@ -260,6 +260,27 @@ async function storeChatMessage(env: Env, conversationId: string, role: "user" |
   return { id, conversationId, role, content, createdAt };
 }
 
+async function createConversation(env: Env, character: Character) {
+  const id = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+  const title = `Chat with ${character.name}`;
+
+  await env.DB.prepare(
+    `INSERT INTO ai_conversations (id, character_id, title, created_at)
+     VALUES (?, ?, ?, ?)`
+  ).bind(id, character.id, title, createdAt).run();
+
+  const messages: StoredChatMessage[] = [];
+  if (character.greeting) {
+    messages.push(await storeChatMessage(env, id, "assistant", character.greeting));
+  }
+
+  return {
+    conversation: { id, characterId: character.id, title, createdAt },
+    messages: messages.map(toUiMessage)
+  };
+}
+
 app.get("/api/guestbook/messages", async (c) => {
   return c.json(await getMessages(c.env));
 });
@@ -319,6 +340,17 @@ app.get("/api/characters/:characterId/conversation", async (c) => {
   });
 });
 
+app.post("/api/characters/:characterId/conversation", async (c) => {
+  const characterId = c.req.param("characterId");
+  const character = await getCharacter(c.env, characterId);
+
+  if (!character) {
+    return c.json({ error: "Character not found." }, 404);
+  }
+
+  return c.json(await createConversation(c.env, character), 201);
+});
+
 app.delete("/api/characters/:characterId", async (c) => {
   const characterId = c.req.param("characterId");
   const character = await getCharacter(c.env, characterId);
@@ -351,21 +383,7 @@ app.post("/api/chats", async (c) => {
     return c.json({ error: "Character not found." }, 404);
   }
 
-  const id = crypto.randomUUID();
-  const createdAt = new Date().toISOString();
-  const title = `Chat with ${character.name}`;
-  await c.env.DB.prepare(
-    `INSERT INTO ai_conversations (id, character_id, title, created_at)
-     VALUES (?, ?, ?, ?)`
-  ).bind(id, character.id, title, createdAt).run();
-
-  if (character.greeting) {
-    await storeChatMessage(c.env, id, "assistant", character.greeting);
-  }
-
-  return c.json({
-    conversation: { id, characterId: character.id, title, createdAt }
-  }, 201);
+  return c.json(await createConversation(c.env, character), 201);
 });
 
 app.get("/api/chats/:chatId", async (c) => {
