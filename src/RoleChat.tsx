@@ -134,10 +134,26 @@ export default function RoleChat({ isDark, toggleTheme, initialCharacterId }: Ro
     }
   };
 
+  const isBootstrapping = initialCharacterId && loading && !selectedCharacter;
+
   return (
     <div className="relative h-full w-full max-w-[1800px] mx-auto flex flex-col pt-12 md:pt-20">
       <AnimatePresence mode="wait">
-        {!selectedCharacter ? (
+        {isBootstrapping ? (
+          <motion.div
+            key="bootstrap"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center gap-6"
+          >
+            <div className="relative">
+              <div className={`w-16 h-16 border-4 ${isDark ? 'border-white/5' : 'border-slate-100'} rounded-full`}></div>
+              <div className="w-16 h-16 border-4 border-t-indigo-500 rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] animate-pulse">正在初始化神经链路...</p>
+          </motion.div>
+        ) : !selectedCharacter ? (
           <RoleChatHome
             key="home"
             isDark={isDark}
@@ -165,7 +181,11 @@ export default function RoleChat({ isDark, toggleTheme, initialCharacterId }: Ro
             onBack={() => {
               setSelectedCharacter(null);
               setConversation(null);
-              window.history.pushState(null, "", "/");
+              if (onNavigateHome) {
+                onNavigateHome();
+              } else {
+                window.history.pushState(null, "", "/");
+              }
             }}
           />
         )}

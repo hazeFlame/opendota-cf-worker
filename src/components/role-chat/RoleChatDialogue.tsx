@@ -32,10 +32,20 @@ export function RoleChatDialogue({
       className="fixed inset-0 z-[100] flex bg-black overflow-hidden"
     >
       {/* Minimalist Side Bar */}
-      <aside className={`w-[80px] md:w-[100px] h-full flex flex-col items-center py-10 border-r ${isDark ? 'bg-[#0F1115] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500 shrink-0`}>
+      <aside className={`w-[80px] md:w-[100px] h-full flex flex-col items-center py-8 border-r ${isDark ? 'bg-[#0F1115] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500 shrink-0`}>
+        {/* Logo */}
+        <div 
+          className="mb-10 cursor-pointer group/logo"
+          onClick={onBack}
+        >
+          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-12 group-hover:rotate-0 transition-transform duration-500">
+            <Activity className="w-6 h-6 text-white" />
+          </div>
+        </div>
+
         <button 
           onClick={onBack}
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10' : 'bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200'} transition-all mb-12`}
+          className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10' : 'bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200'} transition-all mb-8`}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
