@@ -1,5 +1,5 @@
 import { type UIMessage } from "ai";
-import { AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import React, { useEffect, useState } from "react";
 import { BackgroundBeams } from "./components/ui/background-beams";
 import { RoleChatHome } from "./components/role-chat/RoleChatHome";
@@ -14,7 +14,13 @@ type RoleChatProps = {
   initialCharacterId?: string;
 };
 
-export default function RoleChat({ isDark, toggleTheme, initialCharacterId }: RoleChatProps) {
+export default function RoleChat({ 
+  isDark, 
+  toggleTheme, 
+  initialCharacterId, 
+  onNavigateHome, 
+  onNavigateGuestbook 
+}: RoleChatProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
