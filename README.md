@@ -18,7 +18,8 @@
 This app includes a Cloudflare Worker guestbook API backed by D1 and cached with KV.
 
 - Frontend route: `/guestbook`
-- Role chat route: `/characters`
+- Role chat route: `/`
+- Dota dashboard route: `/dashboard`
 - API route: `/api/guestbook/messages`
 - Role APIs: `/api/characters`, `/api/chats`, `/api/chats/:id/messages`
 - D1 migration: `migrations/0001_create_guestbook.sql`

@@ -5,11 +5,11 @@ import {
   ArrowLeft,
   Bot,
   Loader2,
-  MessageCircle,
   Plus,
   RefreshCw,
   Send,
   Sparkles,
+  Trash2,
   UserRound
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
@@ -44,7 +44,8 @@ type CharacterResponse = {
 };
 
 type ConversationResponse = {
-  conversation?: Conversation;
+  character?: Character;
+  conversation?: Conversation | null;
   messages?: UIMessage[];
   error?: string;
 };
@@ -75,6 +76,7 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [startingChat, setStartingChat] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadCharacters = async () => {
@@ -129,6 +131,19 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
     setStartingChat(true);
     setError(null);
     try {
+      const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`));
+      const existingData = await existingResponse.json() as ConversationResponse;
+      if (!existingResponse.ok) {
+        throw new Error(responseError(existingData, existingResponse.status));
+      }
+
+      if (existingData.conversation) {
+        setSelectedCharacter(character);
+        setConversation(existingData.conversation);
+        setInitialMessages(existingData.messages ?? []);
+        return;
+      }
+
       const response = await fetch(apiPath("/api/chats"), {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -154,6 +169,34 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
       setError(err instanceof Error ? err.message : "Unable to start conversation.");
     } finally {
       setStartingChat(false);
+    }
+  };
+
+  const deleteCharacter = async (character: Character) => {
+    const confirmed = window.confirm(`Delete "${character.name}" and all of its conversations?`);
+    if (!confirmed || deletingId) return;
+
+    setDeletingId(character.id);
+    setError(null);
+    try {
+      const response = await fetch(apiPath(`/api/characters/${character.id}`), {
+        method: "DELETE"
+      });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) {
+        throw new Error(responseError(data, response.status));
+      }
+
+      setCharacters((current) => current.filter((item) => item.id !== character.id));
+      if (selectedCharacter?.id === character.id) {
+        setSelectedCharacter(null);
+        setConversation(null);
+        setInitialMessages([]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete character.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -244,10 +287,8 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
             ) : characters.length > 0 ? (
               <div className="space-y-3">
                 {characters.map((character) => (
-                  <button
+                  <div
                     key={character.id}
-                    onClick={() => startConversation(character)}
-                    disabled={startingChat}
                     className={`w-full text-left p-5 rounded-[28px] border transition-all ${
                       selectedCharacter?.id === character.id
                         ? "bg-blue-50 border-blue-100"
@@ -255,13 +296,26 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
+                      <button
+                        onClick={() => startConversation(character)}
+                        disabled={startingChat || deletingId === character.id}
+                        className="min-w-0 flex-1 text-left disabled:opacity-50"
+                      >
                         <p className="font-black text-gray-900 tracking-tight truncate">{character.name}</p>
                         <p className="text-xs text-gray-500 mt-2 leading-5 line-clamp-2">{character.persona}</p>
+                      </button>
+                      <div className="min-w-0">
+                        <button
+                          onClick={() => deleteCharacter(character)}
+                          disabled={deletingId === character.id}
+                          className="w-10 h-10 rounded-2xl bg-white border border-gray-100 text-gray-400 flex items-center justify-center hover:text-red-600 hover:border-red-100 transition-all disabled:opacity-50"
+                          aria-label={`Delete ${character.name}`}
+                        >
+                          {deletingId === character.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
                       </div>
-                      <MessageCircle className="w-5 h-5 text-blue-600 shrink-0" />
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -300,6 +354,7 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
             key={conversation?.id || "empty"}
             conversation={conversation}
             initialMessages={initialMessages}
+            characterName={selectedCharacter?.name}
           />
         </section>
       </main>
@@ -309,10 +364,12 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
 
 function ConversationPanel({
   conversation,
-  initialMessages
+  initialMessages,
+  characterName
 }: {
   conversation: Conversation | null;
   initialMessages: UIMessage[];
+  characterName?: string;
 }) {
   const [input, setInput] = useState("");
   const transport = useMemo(() => {
@@ -328,6 +385,12 @@ function ConversationPanel({
   });
 
   const isStreaming = status === "submitted" || status === "streaming";
+  const lastMessage = messages[messages.length - 1];
+  const showThinking = isStreaming && (
+    !lastMessage ||
+    lastMessage.role === "user" ||
+    (lastMessage.role === "assistant" && messageText(lastMessage).trim().length === 0)
+  );
 
   const submitMessage = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -348,28 +411,41 @@ function ConversationPanel({
 
       <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-5">
         {messages.length > 0 ? (
-          messages.map((message) => {
-            const isUser = message.role === "user";
-            return (
-              <div key={message.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
-                {!isUser && (
-                  <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0">
-                    <Bot className="w-5 h-5 text-white" />
+          <>
+            {messages.map((message) => {
+              const isUser = message.role === "user";
+              return (
+                <div key={message.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+                  {!isUser && (
+                    <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                  <div className={`max-w-[78%] rounded-[28px] px-5 py-4 text-sm leading-7 break-words ${
+                    isUser ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-700 border border-gray-100"
+                  }`}>
+                    {messageText(message)}
                   </div>
-                )}
-                <div className={`max-w-[78%] rounded-[28px] px-5 py-4 text-sm leading-7 break-words ${
-                  isUser ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-700 border border-gray-100"
-                }`}>
-                  {messageText(message)}
+                  {isUser && (
+                    <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center shrink-0">
+                      <UserRound className="w-5 h-5 text-gray-500" />
+                    </div>
+                  )}
                 </div>
-                {isUser && (
-                  <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center shrink-0">
-                    <UserRound className="w-5 h-5 text-gray-500" />
-                  </div>
-                )}
+              );
+            })}
+            {showThinking && (
+              <div className="flex gap-3 justify-start">
+                <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div className="max-w-[78%] rounded-[28px] px-5 py-4 text-sm leading-7 bg-gray-50 text-gray-500 border border-gray-100 flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  <span>{characterName || "角色"} 正在想...</span>
+                </div>
               </div>
-            );
-          })
+            )}
+          </>
         ) : (
           <div className="h-full min-h-[420px] flex items-center justify-center text-center">
             <div className="max-w-sm">

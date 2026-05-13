@@ -117,7 +117,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use("/api/*", cors({
   origin: "*",
   allowHeaders: ["content-type"],
-  allowMethods: ["GET", "POST", "OPTIONS"]
+  allowMethods: ["GET", "POST", "DELETE", "OPTIONS"]
 }));
 
 async function getMessages(env: Env) {
@@ -207,6 +207,18 @@ async function getCharacter(env: Env, characterId: string) {
   return result ? toCharacter(result) : null;
 }
 
+async function getLatestConversation(env: Env, characterId: string) {
+  const result = await env.DB.prepare(
+    `SELECT id, character_id, title, created_at
+     FROM ai_conversations
+     WHERE character_id = ?
+     ORDER BY datetime(created_at) DESC
+     LIMIT 1`
+  ).bind(characterId).first<Record<string, unknown>>();
+
+  return result ? toConversation(result) : null;
+}
+
 async function getConversationWithCharacter(env: Env, conversationId: string) {
   const result = await env.DB.prepare(
     `SELECT
@@ -287,6 +299,46 @@ app.post("/api/characters", async (c) => {
   return c.json({
     character: { id, name, persona, greeting, createdAt }
   }, 201);
+});
+
+app.get("/api/characters/:characterId/conversation", async (c) => {
+  const characterId = c.req.param("characterId");
+  const character = await getCharacter(c.env, characterId);
+
+  if (!character) {
+    return c.json({ error: "Character not found." }, 404);
+  }
+
+  const conversation = await getLatestConversation(c.env, characterId);
+  const messages = conversation ? await getStoredChatMessages(c.env, conversation.id) : [];
+
+  return c.json({
+    character,
+    conversation,
+    messages: messages.map(toUiMessage)
+  });
+});
+
+app.delete("/api/characters/:characterId", async (c) => {
+  const characterId = c.req.param("characterId");
+  const character = await getCharacter(c.env, characterId);
+
+  if (!character) {
+    return c.json({ error: "Character not found." }, 404);
+  }
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      `DELETE FROM ai_chat_messages
+       WHERE conversation_id IN (
+         SELECT id FROM ai_conversations WHERE character_id = ?
+       )`
+    ).bind(characterId),
+    c.env.DB.prepare("DELETE FROM ai_conversations WHERE character_id = ?").bind(characterId),
+    c.env.DB.prepare("DELETE FROM ai_characters WHERE id = ?").bind(characterId)
+  ]);
+
+  return c.json({ ok: true, deletedCharacterId: characterId });
 });
 
 app.post("/api/chats", async (c) => {

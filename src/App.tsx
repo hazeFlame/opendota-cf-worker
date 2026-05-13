@@ -186,7 +186,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (currentPath === "/") {
+    if (currentPath === "/dashboard") {
       fetchPlayerData(searchId);
     }
   }, [currentPath]);
@@ -202,8 +202,8 @@ function App() {
     return <Guestbook onNavigateHome={() => navigate("/")} />;
   }
 
-  if (currentPath === "/characters") {
-    return <RoleChat onNavigateHome={() => navigate("/")} />;
+  if (currentPath === "/" || currentPath === "/characters") {
+    return <RoleChat onNavigateHome={() => navigate("/dashboard")} />;
   }
 
   return (
@@ -240,7 +240,7 @@ function App() {
           </button>
 
           <button
-            onClick={() => navigate("/characters")}
+            onClick={() => navigate("/")}
             className="hidden sm:flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-100 text-gray-700 rounded-2xl font-bold text-sm hover:bg-white hover:border-gray-200 hover:text-blue-600 transition-all"
           >
             <Bot className="w-4 h-4" />
