@@ -51,6 +51,10 @@ type ConversationResponse = {
 
 const apiPath = (path: string) => `${import.meta.env.VITE_GUESTBOOK_API_BASE || ""}${path}`;
 
+const responseError = (data: { error?: string }, status: number) => {
+  return data.error || `Unexpected API response (${status}): ${JSON.stringify(data).slice(0, 160)}`;
+};
+
 const messageText = (message: UIMessage) => {
   return message.parts
     .filter((part): part is { type: "text"; text: string } => {
@@ -92,7 +96,7 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
     try {
       const response = await fetch(apiPath("/api/characters"));
       const data = await response.json() as CharactersResponse;
-      if (!response.ok) throw new Error(data.error || `Request failed with ${response.status}`);
+      if (!response.ok) throw new Error(responseError(data, response.status));
       setCharacters(data.characters ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load characters.");
@@ -119,7 +123,7 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
       });
       const data = await response.json() as CharacterResponse;
       if (!response.ok || !data.character) {
-        throw new Error(data.error || `Request failed with ${response.status}`);
+        throw new Error(responseError(data, response.status));
       }
 
       setCharacters((current) => [data.character as Character, ...current]);
@@ -145,7 +149,7 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
       });
       const data = await response.json() as ConversationResponse;
       if (!response.ok || !data.conversation) {
-        throw new Error(data.error || `Request failed with ${response.status}`);
+        throw new Error(responseError(data, response.status));
       }
 
       setSelectedCharacter(character);
