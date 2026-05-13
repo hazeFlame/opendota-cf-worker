@@ -21,10 +21,12 @@ import {
   Plus,
   Zap,
   Clock,
-  MessageCircle
+  MessageCircle,
+  Bot
 } from "lucide-react";
 import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
 import Guestbook from "./Guestbook";
+import RoleChat from "./RoleChat";
 
 // --- Types ---
 interface PlayerProfile {
@@ -184,7 +186,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (currentPath !== "/guestbook") {
+    if (currentPath === "/") {
       fetchPlayerData(searchId);
     }
   }, [currentPath]);
@@ -198,6 +200,10 @@ function App() {
 
   if (currentPath === "/guestbook") {
     return <Guestbook onNavigateHome={() => navigate("/")} />;
+  }
+
+  if (currentPath === "/characters") {
+    return <RoleChat onNavigateHome={() => navigate("/")} />;
   }
 
   return (
@@ -231,6 +237,14 @@ function App() {
           >
             <MessageCircle className="w-4 h-4" />
             Guestbook
+          </button>
+
+          <button
+            onClick={() => navigate("/characters")}
+            className="hidden sm:flex items-center gap-2 px-4 py-3 bg-gray-50 border border-gray-100 text-gray-700 rounded-2xl font-bold text-sm hover:bg-white hover:border-gray-200 hover:text-blue-600 transition-all"
+          >
+            <Bot className="w-4 h-4" />
+            Roles
           </button>
 
           <div className="hidden md:flex items-center gap-2 pr-2">

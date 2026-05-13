@@ -18,8 +18,11 @@
 This app includes a Cloudflare Worker guestbook API backed by D1 and cached with KV.
 
 - Frontend route: `/guestbook`
+- Role chat route: `/characters`
 - API route: `/api/guestbook/messages`
+- Role APIs: `/api/characters`, `/api/chats`, `/api/chats/:id/messages`
 - D1 migration: `migrations/0001_create_guestbook.sql`
+- Workers AI binding: `AI`
 
 Local Worker flow:
 
@@ -36,3 +39,5 @@ Deploy flow:
    `pnpm db:migrate:remote`
 2. Deploy frontend assets and Worker:
    `pnpm worker:deploy`
+
+Remote deploy requires `CLOUDFLARE_API_TOKEN` in the shell environment.
