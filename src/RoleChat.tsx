@@ -68,27 +68,14 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
   const [name, setName] = useState("");
   const [persona, setPersona] = useState("");
   const [greeting, setGreeting] = useState("");
-  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [startingChat, setStartingChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const transport = useMemo(() => {
-    const api = conversation
-      ? apiPath(`/api/chats/${conversation.id}/messages`)
-      : apiPath("/api/chats/pending/messages");
-    return new DefaultChatTransport({ api });
-  }, [conversation?.id]);
-
-  const { messages, sendMessage, setMessages, status, stop, error: chatError } = useChat({
-    transport
-  });
-
-  const isStreaming = status === "submitted" || status === "streaming";
 
   const loadCharacters = async () => {
     setLoading(true);
@@ -155,28 +142,19 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
       setSelectedCharacter(character);
       setConversation(data.conversation);
       if (character.greeting) {
-        setMessages([{
+        setInitialMessages([{
           id: `greeting-${data.conversation.id}`,
           role: "assistant",
           parts: [{ type: "text", text: character.greeting }]
         }]);
       } else {
-        setMessages([]);
+        setInitialMessages([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start conversation.");
     } finally {
       setStartingChat(false);
     }
-  };
-
-  const submitMessage = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const text = input.trim();
-    if (!text || !conversation || isStreaming) return;
-
-    setInput("");
-    await sendMessage({ text });
   };
 
   return (
@@ -312,71 +290,119 @@ export default function RoleChat({ onNavigateHome }: RoleChatProps) {
             </div>
           </div>
 
-          {(error || chatError) && (
+          {error && (
             <div className="mx-8 mt-6 bg-red-50 border border-red-100 text-red-700 rounded-3xl px-5 py-4 text-sm font-bold">
-              {error || chatError?.message}
+              {error}
             </div>
           )}
 
-          <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-5">
-            {messages.length > 0 ? (
-              messages.map((message) => {
-                const isUser = message.role === "user";
-                return (
-                  <div key={message.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
-                    {!isUser && (
-                      <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0">
-                        <Bot className="w-5 h-5 text-white" />
-                      </div>
-                    )}
-                    <div className={`max-w-[78%] rounded-[28px] px-5 py-4 text-sm leading-7 break-words ${
-                      isUser ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-700 border border-gray-100"
-                    }`}>
-                      {messageText(message)}
-                    </div>
-                    {isUser && (
-                      <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center shrink-0">
-                        <UserRound className="w-5 h-5 text-gray-500" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <div className="h-full min-h-[420px] flex items-center justify-center text-center">
-                <div className="max-w-sm">
-                  <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-5">
-                    <Bot className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <p className="text-sm font-bold text-gray-400 leading-6">
-                    Select a saved role to open a fresh conversation.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <form onSubmit={submitMessage} className="p-6 md:p-8 border-t border-gray-100 flex items-end gap-4">
-            <textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder={conversation ? "Message the character..." : "Select a character first"}
-              disabled={!conversation || isStreaming}
-              rows={2}
-              className="flex-1 bg-gray-50 border border-transparent rounded-3xl px-5 py-4 text-sm outline-none focus:bg-white focus:border-blue-600 transition-all resize-none disabled:opacity-50"
-            />
-            <button
-              type={isStreaming ? "button" : "submit"}
-              onClick={isStreaming ? () => void stop() : undefined}
-              disabled={!conversation || (!isStreaming && input.trim().length < 1)}
-              className="h-14 px-6 bg-blue-600 text-white rounded-2xl font-bold text-sm flex items-center gap-3 hover:bg-blue-500 disabled:opacity-40 transition-all"
-            >
-              {isStreaming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              <span className="hidden sm:inline">{isStreaming ? "Stop" : "Send"}</span>
-            </button>
-          </form>
+          <ConversationPanel
+            key={conversation?.id || "empty"}
+            conversation={conversation}
+            initialMessages={initialMessages}
+          />
         </section>
       </main>
     </div>
+  );
+}
+
+function ConversationPanel({
+  conversation,
+  initialMessages
+}: {
+  conversation: Conversation | null;
+  initialMessages: UIMessage[];
+}) {
+  const [input, setInput] = useState("");
+  const transport = useMemo(() => {
+    const api = conversation
+      ? apiPath(`/api/chats/${conversation.id}/messages`)
+      : apiPath("/api/chats/pending/messages");
+    return new DefaultChatTransport({ api });
+  }, [conversation?.id]);
+
+  const { messages, sendMessage, status, stop, error: chatError } = useChat({
+    transport,
+    messages: initialMessages
+  });
+
+  const isStreaming = status === "submitted" || status === "streaming";
+
+  const submitMessage = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const text = input.trim();
+    if (!text || !conversation || isStreaming) return;
+
+    setInput("");
+    await sendMessage({ text });
+  };
+
+  return (
+    <>
+      {chatError && (
+        <div className="mx-8 mt-6 bg-red-50 border border-red-100 text-red-700 rounded-3xl px-5 py-4 text-sm font-bold">
+          {chatError.message}
+        </div>
+      )}
+
+      <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-5">
+        {messages.length > 0 ? (
+          messages.map((message) => {
+            const isUser = message.role === "user";
+            return (
+              <div key={message.id} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+                {!isUser && (
+                  <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                <div className={`max-w-[78%] rounded-[28px] px-5 py-4 text-sm leading-7 break-words ${
+                  isUser ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-700 border border-gray-100"
+                }`}>
+                  {messageText(message)}
+                </div>
+                {isUser && (
+                  <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center shrink-0">
+                    <UserRound className="w-5 h-5 text-gray-500" />
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <div className="h-full min-h-[420px] flex items-center justify-center text-center">
+            <div className="max-w-sm">
+              <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-5">
+                <Bot className="w-8 h-8 text-blue-600" />
+              </div>
+              <p className="text-sm font-bold text-gray-400 leading-6">
+                Select a saved role to open a fresh conversation.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={submitMessage} className="p-6 md:p-8 border-t border-gray-100 flex items-end gap-4">
+        <textarea
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder={conversation ? "Message the character..." : "Select a character first"}
+          disabled={!conversation || isStreaming}
+          rows={2}
+          className="flex-1 bg-gray-50 border border-transparent rounded-3xl px-5 py-4 text-sm outline-none focus:bg-white focus:border-blue-600 transition-all resize-none disabled:opacity-50"
+        />
+        <button
+          type={isStreaming ? "button" : "submit"}
+          onClick={isStreaming ? () => void stop() : undefined}
+          disabled={!conversation || (!isStreaming && input.trim().length < 1)}
+          className="h-14 px-6 bg-blue-600 text-white rounded-2xl font-bold text-sm flex items-center gap-3 hover:bg-blue-500 disabled:opacity-40 transition-all"
+        >
+          {isStreaming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          <span className="hidden sm:inline">{isStreaming ? "Stop" : "Send"}</span>
+        </button>
+      </form>
+    </>
   );
 }
