@@ -558,6 +558,15 @@ app.post("/api/chats/:chatId/messages", async (c) => {
     ].join("\n"),
     messages: modelMessages,
     temperature: 0.8,
+    providerOptions: {
+      "workers-ai": {
+        reasoning_effort: null,
+        chat_template_kwargs: {
+          enable_thinking: false,
+          clear_thinking: true
+        }
+      }
+    },
     experimental_transform: smoothStream({
       delayInMs: 35,
       chunking: new Intl.Segmenter("zh", { granularity: "grapheme" })
@@ -566,6 +575,7 @@ app.post("/api/chats/:chatId/messages", async (c) => {
 
   return result.toUIMessageStreamResponse({
     originalMessages: messages,
+    sendReasoning: false,
     onFinish: async ({ responseMessage }) => {
       const assistantText = textFromUiMessage(responseMessage);
       if (!assistantText) return;
