@@ -105,6 +105,9 @@ export async function handleGoogleStart(c: Context<AppBindings>) {
   const stateHash = await sha256Hex(state);
   const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_SECONDS * 1000).toISOString();
 
+  deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
+  deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
+
   await c.env.DB.prepare(
     `INSERT INTO oauth_states (state_hash, redirect_path, expires_at, created_at)
      VALUES (?, ?, ?, ?)`
