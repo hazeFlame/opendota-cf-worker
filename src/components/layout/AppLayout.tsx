@@ -1,17 +1,26 @@
 import React from "react";
-import { Sun, Moon, Activity, Bot, MessageCircle } from "lucide-react";
+import { Sun, Moon, Activity, Bot, MessageCircle, LogIn, LogOut } from "lucide-react";
 import { BackgroundBeams } from "../ui/background-beams";
-import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
+import { type AuthUser } from "../../context/AppContext";
 
 type AppLayoutProps = {
   isDark: boolean;
   toggleTheme: () => void;
+  user?: AuthUser | null;
+  authLoading?: boolean;
+  onLogin?: () => void;
+  onLogout?: () => void;
   children?: React.ReactNode;
 };
 
 export function AppLayout({
   isDark,
   toggleTheme,
+  user,
+  authLoading,
+  onLogin,
+  onLogout,
   children
 }: AppLayoutProps) {
   const location = useLocation();
@@ -62,6 +71,30 @@ export function AppLayout({
               </Link>
 
               <div className={`w-px h-6 mx-2 ${isDark ? 'bg-white/10' : 'bg-slate-200 hidden sm:block'}`}></div>
+
+              {authLoading ? (
+                <div className={`hidden md:block h-11 w-28 rounded-2xl animate-pulse ${isDark ? 'bg-white/5' : 'bg-slate-100'}`} />
+              ) : user ? (
+                <button
+                  onClick={onLogout}
+                  className={`hidden md:flex items-center gap-2 max-w-56 px-4 py-3 ${isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'} border rounded-2xl font-bold text-sm transition-all`}
+                >
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name || user.email} className="w-5 h-5 rounded-full" />
+                  ) : (
+                    <LogOut className="w-4 h-4" />
+                  )}
+                  <span className="truncate">{user.name || user.email}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onLogin}
+                  className="hidden md:flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm transition-all hover:bg-indigo-500 active:scale-95"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Google 登录
+                </button>
+              )}
 
               <button
                 onClick={toggleTheme}

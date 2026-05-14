@@ -25,7 +25,7 @@ export function ConversationPanel({
     const api = conversation
       ? apiPath(`/api/chats/${conversation.id}/messages`)
       : apiPath("/api/chats/pending/messages");
-    return new DefaultChatTransport({ api });
+    return new DefaultChatTransport({ api, credentials: "include" });
   }, [conversation?.id]);
 
   const { messages, sendMessage, status, stop, error: chatError } = useChat({

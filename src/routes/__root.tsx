@@ -11,10 +11,17 @@ interface AppContextType {
 
 export const Route = createRootRouteWithContext<AppContextType>()({
   component: () => {
-    const { isDark, toggleTheme } = useApp();
+    const { isDark, toggleTheme, user, authLoading, loginWithGoogle, logout } = useApp();
 
     return (
-      <AppLayout isDark={isDark} toggleTheme={toggleTheme}>
+      <AppLayout
+        isDark={isDark}
+        toggleTheme={toggleTheme}
+        user={user}
+        authLoading={authLoading}
+        onLogin={loginWithGoogle}
+        onLogout={() => void logout()}
+      >
         <div className="flex-1 flex flex-col">
           <Outlet />
         </div>

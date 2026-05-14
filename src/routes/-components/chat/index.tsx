@@ -42,6 +42,7 @@ export default function RoleChat({
   const [name, setName] = useState("");
   const [persona, setPersona] = useState("");
   const [greeting, setGreeting] = useState("");
+  const [visibility, setVisibility] = useState<Character["visibility"]>("private");
 
   // Sync selectedCharacter with characterId from URL
   useEffect(() => {
@@ -77,7 +78,8 @@ export default function RoleChat({
       const response = await fetch(apiPath("/api/characters"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, persona, greeting }),
+        credentials: "include",
+        body: JSON.stringify({ name, persona, greeting, visibility }),
       });
       const data = await response.json() as CharacterResponse;
       if (data.character) {
@@ -85,6 +87,7 @@ export default function RoleChat({
         setName("");
         setPersona("");
         setGreeting("");
+        setVisibility("private");
       }
     } catch (err) {
       console.error(err);
@@ -103,7 +106,7 @@ export default function RoleChat({
 
     setDeletingId(id);
     try {
-      await fetch(apiPath(`/api/characters/${id}`), { method: "DELETE" });
+      await fetch(apiPath(`/api/characters/${id}`), { method: "DELETE", credentials: "include" });
       onRefreshCharacters();
       if (characterId === id) {
         navigate({ to: "/" });
@@ -131,7 +134,9 @@ export default function RoleChat({
 
     try {
       setInternalLoading(true);
-      const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`));
+      const existingResponse = await fetch(apiPath(`/api/characters/${character.id}/conversation`), {
+        credentials: "include"
+      });
       const existingData = await existingResponse.json() as ConversationResponse;
       if (activeConversationRequest.current !== requestId) return;
       
@@ -142,6 +147,7 @@ export default function RoleChat({
         const createResponse = await fetch(apiPath("/api/chats"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ characterId: character.id }),
         });
         const createData = await createResponse.json() as ConversationResponse;
@@ -189,6 +195,7 @@ export default function RoleChat({
             name={name} setName={setName}
             greeting={greeting} setGreeting={setGreeting}
             persona={persona} setPersona={setPersona}
+            visibility={visibility} setVisibility={setVisibility}
             creating={creating}
             createCharacter={createCharacter}
             showValidationHint={showValidationHint}

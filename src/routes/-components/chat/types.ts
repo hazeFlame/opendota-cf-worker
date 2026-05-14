@@ -6,6 +6,9 @@ export type Character = {
   persona: string;
   greeting?: string;
   createdAt: string;
+  visibility: "private" | "public";
+  isOwner: boolean;
+  ownerName?: string;
 };
 
 export type Conversation = {

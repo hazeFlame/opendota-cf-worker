@@ -2,6 +2,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { deleteCookie, setCookie } from "hono/cookie";
 import { convertToModelMessages, smoothStream, streamText, type UIMessage } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 
@@ -17,14 +18,27 @@ type Env = {
   DB: D1Database;
   GUESTBOOK_CACHE: KVNamespace;
   ASSETS?: Fetcher;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+};
+
+type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl: string;
 };
 
 type Character = {
   id: string;
+  userId: string;
   name: string;
   persona: string;
   greeting: string;
   createdAt: string;
+  visibility: "private" | "public";
+  isOwner: boolean;
+  ownerName: string;
 };
 
 type Conversation = {
@@ -50,6 +64,11 @@ const MAX_PERSONA_LENGTH = 2000;
 const MAX_GREETING_LENGTH = 500;
 const MAX_CHAT_MESSAGE_LENGTH = 4000;
 const MAX_STORED_CHAT_MESSAGE_LENGTH = 16000;
+const SESSION_COOKIE = "dp_session";
+const OAUTH_STATE_COOKIE = "dp_oauth_state";
+const OAUTH_VERIFIER_COOKIE = "dp_oauth_verifier";
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const OAUTH_STATE_TTL_SECONDS = 60 * 10;
 
 function cleanText(value: unknown, fallback = "") {
   if (typeof value !== "string") return fallback;
@@ -65,13 +84,22 @@ function toGuestbookMessage(row: Record<string, unknown>): GuestbookMessage {
   };
 }
 
-function toCharacter(row: Record<string, unknown>): Character {
+function normalizeVisibility(value: unknown): "private" | "public" {
+  return value === "public" ? "public" : "private";
+}
+
+function toCharacter(row: Record<string, unknown>, currentUserId = ""): Character {
+  const userId = String(row.user_id || "");
   return {
     id: String(row.id || ""),
+    userId,
     name: String(row.name || ""),
     persona: String(row.persona || ""),
     greeting: String(row.greeting || ""),
-    createdAt: String(row.created_at || "")
+    createdAt: String(row.created_at || ""),
+    visibility: normalizeVisibility(row.visibility),
+    isOwner: Boolean(currentUserId && userId === currentUserId),
+    ownerName: String(row.owner_name || "")
   };
 }
 
@@ -124,6 +152,128 @@ app.use("/api/*", cors({
   allowHeaders: ["content-type"],
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"]
 }));
+
+function toAuthUser(row: Record<string, unknown>): AuthUser {
+  return {
+    id: String(row.id || ""),
+    email: String(row.email || ""),
+    name: String(row.name || ""),
+    avatarUrl: String(row.avatar_url || "")
+  };
+}
+
+function randomToken(byteLength = 32) {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return base64Url(bytes);
+}
+
+function base64Url(bytes: ArrayBuffer | Uint8Array) {
+  const array = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let binary = "";
+  for (const byte of array) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function sha256Hex(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function pkceChallenge(verifier: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return base64Url(digest);
+}
+
+function getCookieOptions(request: Request, maxAge: number) {
+  return {
+    httpOnly: true,
+    secure: new URL(request.url).protocol === "https:",
+    sameSite: "Lax" as const,
+    path: "/",
+    maxAge
+  };
+}
+
+function getRedirectPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
+function readCookie(request: Request, name: string) {
+  const cookie = request.headers.get("Cookie") || "";
+  const found = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+  return found ? decodeURIComponent(found.slice(name.length + 1)) : undefined;
+}
+
+async function getCurrentUser(env: Env, sessionToken?: string) {
+  if (!sessionToken) return null;
+  const sessionId = await sha256Hex(sessionToken);
+  const row = await env.DB.prepare(
+    `SELECT u.id, u.email, u.name, u.avatar_url
+     FROM sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.id = ? AND datetime(s.expires_at) > datetime('now')`
+  ).bind(sessionId).first<Record<string, unknown>>();
+
+  return row ? toAuthUser(row) : null;
+}
+
+async function requireUser(env: Env, request: Request) {
+  return getCurrentUser(env, readCookie(request, SESSION_COOKIE));
+}
+
+async function upsertGoogleUser(env: Env, profile: { sub: string; email: string; name?: string; picture?: string }) {
+  const now = new Date().toISOString();
+  const existing = await env.DB.prepare(
+    `SELECT id, email, name, avatar_url
+     FROM users
+     WHERE google_sub = ? OR email = ?
+     LIMIT 1`
+  ).bind(profile.sub, profile.email).first<Record<string, unknown>>();
+
+  if (existing) {
+    await env.DB.prepare(
+      `UPDATE users
+       SET email = ?, name = ?, avatar_url = ?, google_sub = ?, updated_at = ?, last_login_at = ?
+       WHERE id = ?`
+    ).bind(profile.email, profile.name || "", profile.picture || "", profile.sub, now, now, String(existing.id)).run();
+
+    return {
+      id: String(existing.id),
+      email: profile.email,
+      name: profile.name || "",
+      avatarUrl: profile.picture || ""
+    };
+  }
+
+  const id = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, name, avatar_url, google_sub, created_at, updated_at, last_login_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, profile.email, profile.name || "", profile.picture || "", profile.sub, now, now, now).run();
+
+  return {
+    id,
+    email: profile.email,
+    name: profile.name || "",
+    avatarUrl: profile.picture || ""
+  };
+}
+
+async function createSession(env: Env, userId: string) {
+  const token = randomToken();
+  const id = await sha256Hex(token);
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + SESSION_TTL_SECONDS * 1000).toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO sessions (id, user_id, expires_at, created_at)
+     VALUES (?, ?, ?, ?)`
+  ).bind(id, userId, expiresAt, createdAt.toISOString()).run();
+
+  return token;
+}
 
 async function getMessages(env: Env) {
   const cached = await env.GUESTBOOK_CACHE.get<{ messages: GuestbookMessage[] }>(CACHE_KEY, "json");
@@ -191,40 +341,80 @@ async function createMessage(request: Request, env: Env, ctx: ExecutionContext) 
   };
 }
 
-async function getCharacters(env: Env) {
+async function getCharacters(env: Env, userId: string) {
   const result = await env.DB.prepare(
-    `SELECT id, name, persona, greeting, created_at
-     FROM ai_characters
-     ORDER BY datetime(created_at) DESC
+    `SELECT
+       ch.id,
+       ch.user_id,
+       ch.name,
+       ch.persona,
+       ch.greeting,
+       ch.created_at,
+       ch.visibility,
+       u.name AS owner_name
+     FROM ai_characters ch
+     LEFT JOIN users u ON u.id = ch.user_id
+     WHERE ch.user_id = ? OR ch.visibility = 'public'
+     ORDER BY
+       CASE WHEN ch.user_id = ? THEN 0 ELSE 1 END,
+       datetime(ch.created_at) DESC
      LIMIT 100`
-  ).all<Record<string, unknown>>();
+  ).bind(userId, userId).all<Record<string, unknown>>();
 
-  return (result.results ?? []).map(toCharacter);
+  return (result.results ?? []).map((row) => toCharacter(row, userId));
 }
 
-async function getCharacter(env: Env, characterId: string) {
+async function getCharacter(env: Env, characterId: string, userId: string) {
   const result = await env.DB.prepare(
-    `SELECT id, name, persona, greeting, created_at
-     FROM ai_characters
-     WHERE id = ?`
-  ).bind(characterId).first<Record<string, unknown>>();
+    `SELECT
+       ch.id,
+       ch.user_id,
+       ch.name,
+       ch.persona,
+       ch.greeting,
+       ch.created_at,
+       ch.visibility,
+       u.name AS owner_name
+     FROM ai_characters ch
+     LEFT JOIN users u ON u.id = ch.user_id
+     WHERE ch.id = ? AND (ch.user_id = ? OR ch.visibility = 'public')`
+  ).bind(characterId, userId).first<Record<string, unknown>>();
 
-  return result ? toCharacter(result) : null;
+  return result ? toCharacter(result, userId) : null;
 }
 
-async function getLatestConversation(env: Env, characterId: string) {
+async function getOwnedCharacter(env: Env, characterId: string, userId: string) {
+  const result = await env.DB.prepare(
+    `SELECT
+       ch.id,
+       ch.user_id,
+       ch.name,
+       ch.persona,
+       ch.greeting,
+       ch.created_at,
+       ch.visibility,
+       u.name AS owner_name
+     FROM ai_characters ch
+     LEFT JOIN users u ON u.id = ch.user_id
+     WHERE ch.id = ? AND ch.user_id = ?`
+  ).bind(characterId, userId).first<Record<string, unknown>>();
+
+  return result ? toCharacter(result, userId) : null;
+}
+
+async function getLatestConversation(env: Env, characterId: string, userId: string) {
   const result = await env.DB.prepare(
     `SELECT id, character_id, title, created_at
      FROM ai_conversations
-     WHERE character_id = ?
+     WHERE character_id = ? AND user_id = ?
      ORDER BY datetime(created_at) DESC
      LIMIT 1`
-  ).bind(characterId).first<Record<string, unknown>>();
+  ).bind(characterId, userId).first<Record<string, unknown>>();
 
   return result ? toConversation(result) : null;
 }
 
-async function getConversationWithCharacter(env: Env, conversationId: string) {
+async function getConversationWithCharacter(env: Env, conversationId: string, userId: string) {
   const result = await env.DB.prepare(
     `SELECT
        c.id,
@@ -233,11 +423,13 @@ async function getConversationWithCharacter(env: Env, conversationId: string) {
        c.created_at,
        ch.name AS character_name,
        ch.persona AS character_persona,
-       ch.greeting AS character_greeting
+       ch.greeting AS character_greeting,
+       ch.user_id AS character_user_id,
+       ch.visibility AS character_visibility
      FROM ai_conversations c
      JOIN ai_characters ch ON ch.id = c.character_id
-     WHERE c.id = ?`
-  ).bind(conversationId).first<Record<string, unknown>>();
+     WHERE c.id = ? AND c.user_id = ?`
+  ).bind(conversationId, userId).first<Record<string, unknown>>();
 
   return result;
 }
@@ -266,15 +458,15 @@ async function storeChatMessage(env: Env, conversationId: string, role: "user" |
   return { id, conversationId, role, content: storedContent, createdAt };
 }
 
-async function createConversation(env: Env, character: Character) {
+async function createConversation(env: Env, character: Character, userId: string) {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   const title = `Chat with ${character.name}`;
 
   await env.DB.prepare(
-    `INSERT INTO ai_conversations (id, character_id, title, created_at)
-     VALUES (?, ?, ?, ?)`
-  ).bind(id, character.id, title, createdAt).run();
+    `INSERT INTO ai_conversations (id, character_id, user_id, title, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).bind(id, character.id, userId, title, createdAt).run();
 
   const messages: StoredChatMessage[] = [];
   if (character.greeting) {
@@ -301,16 +493,161 @@ app.get("/api/health", (c) => {
   return c.json({ ok: true, service: "opendota-guestbook" });
 });
 
+app.get("/api/auth/me", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  return c.json({ user });
+});
+
+app.get("/api/auth/google", async (c) => {
+  if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET) {
+    return c.json({ error: "Google OAuth is not configured." }, 500);
+  }
+
+  const requestUrl = new URL(c.req.url);
+  const redirectPath = getRedirectPath(requestUrl.searchParams.get("redirect"));
+  const redirectUri = new URL("/api/auth/google/callback", requestUrl.origin).toString();
+  const state = randomToken(24);
+  const verifier = randomToken(48);
+  const stateHash = await sha256Hex(state);
+  const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_SECONDS * 1000).toISOString();
+
+  await c.env.DB.prepare(
+    `INSERT INTO oauth_states (state_hash, redirect_path, expires_at, created_at)
+     VALUES (?, ?, ?, ?)`
+  ).bind(stateHash, redirectPath, expiresAt, new Date().toISOString()).run();
+
+  setCookie(c, OAUTH_STATE_COOKIE, state, getCookieOptions(c.req.raw, OAUTH_STATE_TTL_SECONDS));
+  setCookie(c, OAUTH_VERIFIER_COOKIE, verifier, getCookieOptions(c.req.raw, OAUTH_STATE_TTL_SECONDS));
+
+  const googleUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  googleUrl.searchParams.set("client_id", c.env.GOOGLE_CLIENT_ID);
+  googleUrl.searchParams.set("redirect_uri", redirectUri);
+  googleUrl.searchParams.set("response_type", "code");
+  googleUrl.searchParams.set("scope", "openid email profile");
+  googleUrl.searchParams.set("state", state);
+  googleUrl.searchParams.set("code_challenge", await pkceChallenge(verifier));
+  googleUrl.searchParams.set("code_challenge_method", "S256");
+  googleUrl.searchParams.set("prompt", "select_account");
+
+  return c.redirect(googleUrl.toString(), 302);
+});
+
+app.get("/api/auth/google/callback", async (c) => {
+  if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET) {
+    return c.json({ error: "Google OAuth is not configured." }, 500);
+  }
+
+  const requestUrl = new URL(c.req.url);
+  const code = requestUrl.searchParams.get("code");
+  const state = requestUrl.searchParams.get("state");
+  const cookieState = readCookie(c.req.raw, OAUTH_STATE_COOKIE);
+  const verifier = readCookie(c.req.raw, OAUTH_VERIFIER_COOKIE);
+
+  if (!code || !state || !cookieState || !verifier || state !== cookieState) {
+    return c.redirect("/?auth_error=invalid_oauth_state", 302);
+  }
+
+  const stateHash = await sha256Hex(state);
+  const storedState = await c.env.DB.prepare(
+    `SELECT redirect_path, expires_at, used_at
+     FROM oauth_states
+     WHERE state_hash = ?`
+  ).bind(stateHash).first<Record<string, unknown>>();
+
+  if (!storedState || storedState.used_at || new Date(String(storedState.expires_at)).getTime() < Date.now()) {
+    return c.redirect("/?auth_error=expired_oauth_state", 302);
+  }
+
+  await c.env.DB.prepare(
+    "UPDATE oauth_states SET used_at = ? WHERE state_hash = ?"
+  ).bind(new Date().toISOString(), stateHash).run();
+
+  const redirectUri = new URL("/api/auth/google/callback", requestUrl.origin).toString();
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: c.env.GOOGLE_CLIENT_ID,
+      client_secret: c.env.GOOGLE_CLIENT_SECRET,
+      code,
+      code_verifier: verifier,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri
+    })
+  });
+
+  if (!tokenResponse.ok) {
+    console.error("Google token exchange failed", await tokenResponse.text());
+    return c.redirect("/?auth_error=google_token_failed", 302);
+  }
+
+  const tokenData = await tokenResponse.json() as { access_token?: string };
+  if (!tokenData.access_token) {
+    return c.redirect("/?auth_error=google_token_missing", 302);
+  }
+
+  const profileResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { Authorization: `Bearer ${tokenData.access_token}` }
+  });
+
+  if (!profileResponse.ok) {
+    console.error("Google profile fetch failed", await profileResponse.text());
+    return c.redirect("/?auth_error=google_profile_failed", 302);
+  }
+
+  const profile = await profileResponse.json() as {
+    sub?: string;
+    email?: string;
+    email_verified?: boolean;
+    name?: string;
+    picture?: string;
+  };
+
+  if (!profile.sub || !profile.email || profile.email_verified === false) {
+    return c.redirect("/?auth_error=google_email_unverified", 302);
+  }
+
+  const user = await upsertGoogleUser(c.env, {
+    sub: profile.sub,
+    email: profile.email,
+    name: profile.name,
+    picture: profile.picture
+  });
+  const sessionToken = await createSession(c.env, user.id);
+
+  setCookie(c, SESSION_COOKIE, sessionToken, getCookieOptions(c.req.raw, SESSION_TTL_SECONDS));
+  deleteCookie(c, OAUTH_STATE_COOKIE, { path: "/" });
+  deleteCookie(c, OAUTH_VERIFIER_COOKIE, { path: "/" });
+
+  return c.redirect(getRedirectPath(String(storedState.redirect_path || "/")), 302);
+});
+
+app.post("/api/auth/logout", async (c) => {
+  const token = readCookie(c.req.raw, SESSION_COOKIE);
+  if (token) {
+    await c.env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(await sha256Hex(token)).run();
+  }
+
+  deleteCookie(c, SESSION_COOKIE, { path: "/" });
+  return c.json({ ok: true });
+});
+
 app.get("/api/characters", async (c) => {
-  return c.json({ characters: await getCharacters(c.env) });
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+  return c.json({ characters: await getCharacters(c.env, user.id) });
 });
 
 app.post("/api/characters", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const payload = await c.req.json().catch(() => null);
   const input = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
   const name = cleanText(input.name, "Unnamed Character").slice(0, MAX_NAME_LENGTH) || "Unnamed Character";
   const persona = cleanText(input.persona).slice(0, MAX_PERSONA_LENGTH);
   const greeting = cleanText(input.greeting).slice(0, MAX_GREETING_LENGTH);
+  const visibility = normalizeVisibility(input.visibility);
 
   if (persona.length < 10) {
     return c.json({ error: "Persona must be at least 10 characters." }, 400);
@@ -319,24 +656,27 @@ app.post("/api/characters", async (c) => {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
   await c.env.DB.prepare(
-    `INSERT INTO ai_characters (id, name, persona, greeting, created_at)
-     VALUES (?, ?, ?, ?, ?)`
-  ).bind(id, name, persona, greeting, createdAt).run();
+    `INSERT INTO ai_characters (id, user_id, name, persona, greeting, visibility, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, user.id, name, persona, greeting, visibility, createdAt).run();
 
   return c.json({
-    character: { id, name, persona, greeting, createdAt }
+    character: { id, name, persona, greeting, visibility, createdAt, isOwner: true, ownerName: user.name }
   }, 201);
 });
 
 app.get("/api/characters/:characterId/conversation", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const characterId = c.req.param("characterId");
-  const character = await getCharacter(c.env, characterId);
+  const character = await getCharacter(c.env, characterId, user.id);
 
   if (!character) {
     return c.json({ error: "Character not found." }, 404);
   }
 
-  const conversation = await getLatestConversation(c.env, characterId);
+  const conversation = await getLatestConversation(c.env, characterId, user.id);
   const messages = conversation ? await getStoredChatMessages(c.env, conversation.id) : [];
 
   return c.json({
@@ -347,19 +687,25 @@ app.get("/api/characters/:characterId/conversation", async (c) => {
 });
 
 app.post("/api/characters/:characterId/conversation", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const characterId = c.req.param("characterId");
-  const character = await getCharacter(c.env, characterId);
+  const character = await getCharacter(c.env, characterId, user.id);
 
   if (!character) {
     return c.json({ error: "Character not found." }, 404);
   }
 
-  return c.json(await createConversation(c.env, character), 201);
+  return c.json(await createConversation(c.env, character, user.id), 201);
 });
 
 app.delete("/api/characters/:characterId", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const characterId = c.req.param("characterId");
-  const character = await getCharacter(c.env, characterId);
+  const character = await getOwnedCharacter(c.env, characterId, user.id);
 
   if (!character) {
     return c.json({ error: "Character not found." }, 404);
@@ -373,28 +719,34 @@ app.delete("/api/characters/:characterId", async (c) => {
        )`
     ).bind(characterId),
     c.env.DB.prepare("DELETE FROM ai_conversations WHERE character_id = ?").bind(characterId),
-    c.env.DB.prepare("DELETE FROM ai_characters WHERE id = ?").bind(characterId)
+    c.env.DB.prepare("DELETE FROM ai_characters WHERE id = ? AND user_id = ?").bind(characterId, user.id)
   ]);
 
   return c.json({ ok: true, deletedCharacterId: characterId });
 });
 
 app.post("/api/chats", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const payload = await c.req.json().catch(() => null);
   const input = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
   const characterId = cleanText(input.characterId);
-  const character = characterId ? await getCharacter(c.env, characterId) : null;
+  const character = characterId ? await getCharacter(c.env, characterId, user.id) : null;
 
   if (!character) {
     return c.json({ error: "Character not found." }, 404);
   }
 
-  return c.json(await createConversation(c.env, character), 201);
+  return c.json(await createConversation(c.env, character, user.id), 201);
 });
 
 app.get("/api/chats/:chatId", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const chatId = c.req.param("chatId");
-  const conversation = await getConversationWithCharacter(c.env, chatId);
+  const conversation = await getConversationWithCharacter(c.env, chatId, user.id);
 
   if (!conversation) {
     return c.json({ error: "Conversation not found." }, 404);
@@ -408,15 +760,21 @@ app.get("/api/chats/:chatId", async (c) => {
       name: String(conversation.character_name || ""),
       persona: String(conversation.character_persona || ""),
       greeting: String(conversation.character_greeting || ""),
-      createdAt: ""
+      createdAt: "",
+      visibility: normalizeVisibility(conversation.character_visibility),
+      isOwner: String(conversation.character_user_id || "") === user.id,
+      ownerName: ""
     },
     messages: messages.map(toUiMessage)
   });
 });
 
 app.post("/api/chats/:chatId/messages", async (c) => {
+  const user = await requireUser(c.env, c.req.raw);
+  if (!user) return c.json({ error: "Authentication required." }, 401);
+
   const chatId = c.req.param("chatId");
-  const conversation = await getConversationWithCharacter(c.env, chatId);
+  const conversation = await getConversationWithCharacter(c.env, chatId, user.id);
 
   if (!conversation) {
     return c.json({ error: "Conversation not found." }, 404);

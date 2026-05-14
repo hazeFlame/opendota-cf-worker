@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
-import { Bot, Sparkles, Loader2, UserRound, Trash2, ChevronRight } from "lucide-react";
+import { Bot, Sparkles, Loader2, UserRound, Trash2, ChevronRight, Lock, Globe2 } from "lucide-react";
 import { Button as MovingBorderButton } from "../../../components/ui/moving-border";
 import { type Character } from "./types";
 
@@ -12,6 +12,8 @@ type RoleChatHomeProps = {
   setGreeting: (v: string) => void;
   persona: string;
   setPersona: (v: string) => void;
+  visibility: Character["visibility"];
+  setVisibility: (v: Character["visibility"]) => void;
   creating: boolean;
   createCharacter: (e: React.FormEvent) => void;
   showValidationHint: boolean;
@@ -28,6 +30,7 @@ export function RoleChatHome({
   name, setName,
   greeting, setGreeting,
   persona, setPersona,
+  visibility, setVisibility,
   creating,
   createCharacter,
   showValidationHint,
@@ -96,6 +99,37 @@ export function RoleChatHome({
                     className={`w-full ${isDark ? 'bg-black/40 border-white/5 focus:border-indigo-500/50' : 'bg-slate-50 border-slate-200 focus:border-indigo-500/50'} border rounded-2xl px-5 py-5 text-sm leading-relaxed outline-none transition-all resize-none placeholder:text-slate-600 ${isDark ? 'text-white' : 'text-slate-900 shadow-inner'}`}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <label className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'} ml-1`}>可见性</label>
+                  <div className={`grid grid-cols-2 gap-2 p-1.5 rounded-2xl border ${isDark ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                    {[
+                      { value: "private" as const, label: "私有", icon: Lock },
+                      { value: "public" as const, label: "公开", icon: Globe2 },
+                    ].map((option) => {
+                      const Icon = option.icon;
+                      const active = visibility === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setVisibility(option.value)}
+                          className={`h-10 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                            active
+                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                              : isDark
+                                ? "text-slate-500 hover:bg-white/5 hover:text-slate-300"
+                                : "text-slate-500 hover:bg-white hover:text-slate-900"
+                          }`}
+                          title={option.value === "public" ? "公开后其他登录用户可以看到并发起自己的对话" : "只有你能看到和使用"}
+                        >
+                          <Icon className="w-3.5 h-3.5" />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               {((persona.trim().length > 0 && persona.trim().length < 10) || showValidationHint) && (
@@ -157,17 +191,34 @@ export function RoleChatHome({
                     <div className={`w-10 h-10 ${isDark ? 'bg-white/5' : 'bg-slate-50'} rounded-xl flex items-center justify-center border ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                       <Bot className="w-5 h-5 text-indigo-500" />
                     </div>
-                    <button
-                      onClick={(e) => deleteCharacter(character.id, e)}
-                      disabled={deletingId === character.id}
-                      className={`p-2.5 rounded-lg transition-all ${
-                        isDark ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-500 hover:bg-red-100"
-                      } ${deletingId === character.id ? "opacity-50" : "opacity-0 group-hover:opacity-100"}`}
-                    >
-                      {deletingId === character.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                        character.visibility === "public"
+                          ? isDark ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/10" : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                          : isDark ? "bg-white/5 text-slate-500 border-white/5" : "bg-slate-50 text-slate-500 border-slate-100"
+                      }`}>
+                        {character.visibility === "public" ? "公开" : "私有"}
+                      </span>
+                      {character.isOwner && (
+                        <button
+                          onClick={(e) => deleteCharacter(character.id, e)}
+                          disabled={deletingId === character.id}
+                          className={`p-2.5 rounded-lg transition-all ${
+                            isDark ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-500 hover:bg-red-100"
+                          } ${deletingId === character.id ? "opacity-50" : "opacity-0 group-hover:opacity-100"}`}
+                          title="删除角色卡和关联对话"
+                        >
+                          {deletingId === character.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <h3 className={`text-xl font-black mb-2 tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'} uppercase`}>{character.name}</h3>
+                  {!character.isOwner && character.ownerName && (
+                    <p className={`text-[9px] font-black uppercase tracking-widest mb-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                      来自 {character.ownerName}
+                    </p>
+                  )}
                   <p className={`text-[11px] font-medium leading-relaxed line-clamp-4 tracking-wide ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>
                     {character.persona}
                   </p>
