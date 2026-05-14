@@ -1,0 +1,13 @@
+export const CACHE_KEY = "guestbook:messages:v1";
+export const CHAT_MODEL = "@cf/zai-org/glm-4.7-flash";
+export const MAX_NAME_LENGTH = 40;
+export const MAX_MESSAGE_LENGTH = 500;
+export const MAX_PERSONA_LENGTH = 2000;
+export const MAX_GREETING_LENGTH = 500;
+export const MAX_CHAT_MESSAGE_LENGTH = 4000;
+export const MAX_STORED_CHAT_MESSAGE_LENGTH = 16000;
+export const SESSION_COOKIE = "dp_session";
+export const OAUTH_STATE_COOKIE = "dp_oauth_state";
+export const OAUTH_VERIFIER_COOKIE = "dp_oauth_verifier";
+export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+export const OAUTH_STATE_TTL_SECONDS = 60 * 10;
