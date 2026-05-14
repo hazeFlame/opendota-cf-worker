@@ -167,7 +167,7 @@ export default function RoleChat({
 
   return (
     <div className="relative flex-1 w-full max-w-[1800px] mx-auto flex flex-col px-4 sm:px-6 pt-8 md:pt-14 pb-8">
-      <AnimatePresence mode="wait">
+      <AnimatePresence initial={false}>
         {isBootstrapping ? (
           <motion.div
             key="bootstrap"

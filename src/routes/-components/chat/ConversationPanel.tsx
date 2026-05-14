@@ -67,6 +67,11 @@ export function ConversationPanel({
           <>
             {messages.map((message) => {
               const isUser = message.role === "user";
+              const text = messageText(message);
+              if (!isUser && text.trim().length === 0) {
+                return null;
+              }
+
               return (
                 <div key={message.id} className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
                   {!isUser && (
@@ -79,7 +84,7 @@ export function ConversationPanel({
                       ? "bg-indigo-600 text-white rounded-tr-none shadow-xl shadow-indigo-500/10 font-medium" 
                       : (isDark ? "bg-white/5 text-gray-200 border border-white/5 rounded-tl-none font-medium" : "bg-slate-50 text-slate-700 border border-slate-100 rounded-tl-none font-medium")
                   }`}>
-                    {messageText(message)}
+                    {text}
                   </div>
                   {isUser && (
                     <div className={`w-10 h-10 ${isDark ? 'bg-white/10 border-white/10 text-indigo-400' : 'bg-slate-100 border-slate-200 text-slate-500'} rounded-xl flex items-center justify-center shrink-0 border`}>
