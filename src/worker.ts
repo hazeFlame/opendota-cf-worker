@@ -49,6 +49,7 @@ const MAX_MESSAGE_LENGTH = 500;
 const MAX_PERSONA_LENGTH = 2000;
 const MAX_GREETING_LENGTH = 500;
 const MAX_CHAT_MESSAGE_LENGTH = 4000;
+const MAX_STORED_CHAT_MESSAGE_LENGTH = 16000;
 
 function cleanText(value: unknown, fallback = "") {
   if (typeof value !== "string") return fallback;
@@ -110,6 +111,10 @@ function textFromUiMessage(message: UIMessage) {
     .map((part) => part.text)
     .join("")
     .trim();
+}
+
+function clipStoredChatContent(content: string) {
+  return content.trim().slice(0, MAX_STORED_CHAT_MESSAGE_LENGTH);
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -251,13 +256,14 @@ async function getStoredChatMessages(env: Env, conversationId: string) {
 async function storeChatMessage(env: Env, conversationId: string, role: "user" | "assistant", content: string) {
   const id = crypto.randomUUID();
   const createdAt = new Date().toISOString();
+  const storedContent = clipStoredChatContent(content);
 
   await env.DB.prepare(
     `INSERT INTO ai_chat_messages (id, conversation_id, role, content, created_at)
      VALUES (?, ?, ?, ?, ?)`
-  ).bind(id, conversationId, role, content, createdAt).run();
+  ).bind(id, conversationId, role, storedContent, createdAt).run();
 
-  return { id, conversationId, role, content, createdAt };
+  return { id, conversationId, role, content: storedContent, createdAt };
 }
 
 async function createConversation(env: Env, character: Character) {
@@ -551,16 +557,25 @@ app.post("/api/chats/:chatId/messages", async (c) => {
       "Say: 'You keep saying things like that and eventually I'm going to stop behaving properly around you.'"
     ].join("\n"),
     messages: modelMessages,
-    temperature: 0.8,
-    onFinish: async ({ text }) => {
-      const assistantText = text.trim();
-      if (assistantText) {
-        await storeChatMessage(c.env, chatId, "assistant", assistantText.slice(0, MAX_CHAT_MESSAGE_LENGTH));
-      }
-    }
+    temperature: 0.8
   });
 
   return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    onFinish: async ({ responseMessage }) => {
+      const assistantText = textFromUiMessage(responseMessage);
+      if (!assistantText) return;
+
+      try {
+        await storeChatMessage(c.env, chatId, "assistant", assistantText);
+      } catch (error) {
+        console.error("Failed to store assistant message", {
+          chatId,
+          length: assistantText.length,
+          error
+        });
+      }
+    },
     headers: {
       "content-encoding": "identity"
     }
