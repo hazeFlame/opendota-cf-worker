@@ -2,7 +2,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { convertToModelMessages, smoothStream, streamText, type UIMessage } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 
 type GuestbookMessage = {
@@ -557,7 +557,11 @@ app.post("/api/chats/:chatId/messages", async (c) => {
       "Say: 'You keep saying things like that and eventually I'm going to stop behaving properly around you.'"
     ].join("\n"),
     messages: modelMessages,
-    temperature: 0.8
+    temperature: 0.8,
+    experimental_transform: smoothStream({
+      delayInMs: 35,
+      chunking: new Intl.Segmenter("zh", { granularity: "grapheme" })
+    })
   });
 
   return result.toUIMessageStreamResponse({
