@@ -12,17 +12,29 @@
 ## 🚀 技术栈 (Tech Stack)
 
 ### Frontend
-- **React 19**: 利用最新的 React 特性（如 Strict Mode, 增强的 Hooks）构建。
+- **React 19**: 核心框架，利用最新的 React 特性（如 Actions, Use 钩子）构建。
 - **TanStack Router**: 全自动类型安全的文件系统路由系统。
-- **Tailwind CSS 4.0**: 使用下一代 CSS 引擎实现极致的视觉表现。
+- **Tailwind CSS 4.0**: 下一代 CSS 引擎，极致的开发体验与视觉表现。
+- **Shadcn/UI & Radix UI**: 基于无头组件库构建的精美 UI 系统。
 - **Motion (Framer Motion)**: 提供丝滑的页面转场与微交互动画。
-- **Lucide React**: 现代化的图标系统。
+- **Lucide React**: 现代化的矢量图标库。
+- **Geist Font**: 使用 Vercel 的 Geist 字体，提供卓越的阅读体验。
 
-### Backend & Infrastructure
-- **Cloudflare Workers (Hono)**: 基于边缘运行的高性能 API。
-- **D1 Database**: 存储留言板数据与角色配置的分布式 SQL 数据库。
-- **Cloudflare AI**: 集成 Gemini / Llama 等大模型实现角色扮演对话。
+### Backend & Storage
+- **Cloudflare Workers (Hono)**: 基于边缘运行的高性能 Web 框架。
+- **D1 Database**: Cloudflare 原生分布式 SQL 数据库，存储留言与配置。
+- **Workers KV**: 边缘键值存储，用于缓存与状态管理。
+- **TypeScript**: 全栈类型安全支持。
+
+### AI Capabilities
+- **Vercel AI SDK**: 统一的 AI 交互流式处理框架。
+- **Cloudflare AI**: 集成边缘模型（Llama, Mistral 等）。
+- **Google Generative AI**: 集成 Gemini Pro 系列大模型。
+
+### Infrastructure & Tools
 - **Vite**: 极速的构建工具与开发环境。
+- **Wrangler**: Cloudflare Workers 开发与部署工具。
+- **pnpm**: 高效的包管理器。
 
 ---
 
