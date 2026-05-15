@@ -1,11 +1,12 @@
-# 🌌 DotaPulse: Neural Link Protocol
+# 🌌 AI GirlFriend
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-girlove.live-FF69B4?style=flat-square&logo=browser)](https://girlove.live/)
 [![Deploy Status](https://img.shields.io/badge/Deployment-Cloudflare_Pages-orange?style=flat-square)](https://opendota-cf-worker.pages.dev/)
 [![React Version](https://img.shields.io/badge/React-19.0-blue?style=flat-square)](https://react.dev/)
 [![Router](https://img.shields.io/badge/Router-TanStack_Router-black?style=flat-square)](https://tanstack.com/router)
 [![Styling](https://img.shields.io/badge/Styling-Tailwind_CSS_4.0-38b2ac?style=flat-square)](https://tailwindcss.com/)
 
-**DotaPulse** 是一个基于边缘计算架构的高性能、全栈 AI 交互与数据分析平台。它融合了现代 Web 技术栈与 Cloudflare 的边缘能力，提供极致流畅的 AI 角色对话体验与实时 Dota 2 数据探测。
+**AI GirlFriend** ([girlove.live](https://girlove.live/)) 是一个基于边缘计算架构的高性能、全栈 AI 交互平台。它融合了现代 Web 技术栈与 Cloudflare 的边缘能力，提供极致流畅的 AI 角色对话体验。
 
 ---
 
