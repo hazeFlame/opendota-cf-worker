@@ -34,7 +34,7 @@ export function RoleChatDialogue({
       className="fixed inset-0 z-[100] flex bg-black overflow-hidden"
     >
       {/* Minimalist Side Bar */}
-      <aside className={`w-[72px] md:w-[96px] h-full flex flex-col items-center py-6 md:py-8 border-r ${isDark ? 'bg-[#0F1115] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500 shrink-0`}>
+      <aside className={`hidden md:flex w-[88px] lg:w-[96px] h-full flex-col items-center py-6 md:py-8 border-r ${isDark ? 'bg-[#0F1115] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-300 shrink-0`}>
         {/* Logo */}
         <div 
           className="mb-10 cursor-pointer group/logo"
@@ -82,24 +82,46 @@ export function RoleChatDialogue({
 
       {/* Main Dialogue Content */}
       <div className="flex-1 flex flex-col h-full min-w-0">
-        <header className={`min-h-20 px-4 md:px-8 py-4 flex items-center justify-between gap-4 border-b ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500`}>
-          <div className="flex items-center gap-3 md:gap-6 min-w-0">
-            <h2 className={`text-xl md:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'} truncate uppercase`}>
-              {selectedCharacter.name}
-            </h2>
+        <header className={`min-h-14 md:min-h-20 px-3 sm:px-4 md:px-8 py-2.5 md:py-4 flex items-center justify-between gap-3 border-b ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-300`}>
+          <div className="flex items-center gap-2.5 md:gap-6 min-w-0">
+            <button
+              onClick={onBack}
+              className={`md:hidden h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-700'}`}
+              aria-label="返回"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className={`md:hidden h-10 w-10 rounded-2xl flex items-center justify-center shrink-0 ${isDark ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-100'} border`}>
+              <Bot className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div className="min-w-0">
+              <h2 className={`text-base sm:text-lg md:text-2xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-900'} truncate uppercase`}>
+                {selectedCharacter.name}
+              </h2>
+              <p className="md:hidden text-[10px] font-bold text-slate-500 truncate">
+                {isLinking ? "正在建立连接" : selectedCharacter.persona.slice(0, 28)}
+              </p>
+            </div>
             <div className={`hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border ${isLinking ? 'bg-amber-500/10 border-amber-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isLinking ? 'bg-amber-500' : 'bg-green-500'}`}></div>
+              <div className={`w-1.5 h-1.5 rounded-full ${isLinking ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`}></div>
               <span className={`text-[10px] font-black uppercase tracking-widest ${isLinking ? 'text-amber-500' : 'text-green-500'}`}>
                 {isLinking ? "建立连接" : "已连接"}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
             <p className="hidden md:block text-[10px] font-black uppercase tracking-widest text-slate-500">
               性格模组: {selectedCharacter.persona.slice(0, 30)}...
             </p>
-            <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'} border flex items-center justify-center`}>
+            <button 
+              onClick={toggleTheme}
+              className={`md:hidden h-10 w-10 rounded-2xl flex items-center justify-center ${isDark ? 'bg-white/5 text-yellow-400' : 'bg-slate-100 text-slate-500'} border ${isDark ? 'border-white/5' : 'border-slate-200'}`}
+              aria-label="切换主题"
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <div className={`hidden sm:flex w-10 h-10 rounded-xl ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'} border items-center justify-center`}>
               <Sparkles className="w-5 h-5 text-indigo-500" />
             </div>
           </div>
