@@ -61,7 +61,7 @@ export function ConversationPanel({
     <>
       <div 
         ref={scrollRef}
-        className="flex-1 p-4 sm:p-6 md:p-10 xl:p-12 overflow-y-auto space-y-6 md:space-y-8 custom-scrollbar scroll-smooth"
+        className="flex-1 p-4 sm:p-6 md:p-10 xl:p-12 overflow-y-auto space-y-6 md:space-y-8 custom-scrollbar"
       >
         {messages.length > 0 ? (
           <>
@@ -75,13 +75,13 @@ export function ConversationPanel({
               return (
                 <div key={message.id} className={`flex gap-4 ${isUser ? "justify-end" : "justify-start"}`}>
                   {!isUser && (
-                    <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+                    <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                       <Bot className="w-5 h-5 text-white" />
                     </div>
                   )}
                   <div className={`max-w-[min(80%,720px)] rounded-[24px] px-5 md:px-6 py-4 md:py-5 text-sm leading-7 transition-all break-words ${
                     isUser 
-                      ? "bg-indigo-600 text-white rounded-tr-none shadow-xl shadow-indigo-500/10 font-medium" 
+                      ? "bg-indigo-600 text-white rounded-tr-none font-medium" 
                       : (isDark ? "bg-white/5 text-gray-200 border border-white/5 rounded-tl-none font-medium" : "bg-slate-50 text-slate-700 border border-slate-100 rounded-tl-none font-medium")
                   }`}>
                     {text}
@@ -96,7 +96,7 @@ export function ConversationPanel({
             })}
             {showThinking && (
               <div className="flex gap-4 justify-start items-start">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div className={`max-w-[80%] rounded-[24px] px-8 py-5 ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'} border rounded-tl-none flex flex-col gap-4`}>
@@ -164,7 +164,7 @@ export function ConversationPanel({
             placeholder={conversation ? "将思维传输给实体..." : "正在建立身份链接..."}
             disabled={!conversation || isLinking || isStreaming}
             rows={2}
-            className={`w-full ${isDark ? 'bg-black/40 border-white/5 focus:bg-black/60 focus:border-indigo-500/40' : 'bg-white border-slate-200 focus:bg-white focus:border-indigo-400 shadow-lg shadow-slate-200/20'} border rounded-[28px] md:rounded-[32px] pl-5 md:pl-7 pr-24 md:pr-32 py-5 md:py-6 text-sm outline-none transition-all resize-none disabled:opacity-60 ${isDark ? 'text-white placeholder:text-gray-700 shadow-inner' : 'text-slate-900 placeholder:text-slate-300'}`}
+            className={`w-full ${isDark ? 'bg-black/40 border-white/5 focus:bg-black/60 focus:border-indigo-500/40' : 'bg-white border-slate-200 focus:bg-white focus:border-indigo-400'} border rounded-[28px] md:rounded-[32px] pl-5 md:pl-7 pr-24 md:pr-32 py-5 md:py-6 text-sm outline-none transition-all resize-none disabled:opacity-60 ${isDark ? 'text-white placeholder:text-gray-700' : 'text-slate-900 placeholder:text-slate-300'}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -180,7 +180,7 @@ export function ConversationPanel({
               className={`h-full px-4 md:px-8 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 md:gap-3 transition-all active:scale-[0.98] ${
                 isStreaming 
                 ? "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20" 
-                : "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:bg-indigo-500 disabled:opacity-0"
+                : "bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-0"
               }`}
             >
               {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

@@ -221,7 +221,7 @@ export default function RoleChat({
       </AnimatePresence>
 
       {error && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] bg-red-500 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl animate-bounce">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] bg-red-500 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest">
           {error}
         </div>
       )}

@@ -1,7 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Bot, Sparkles, Loader2, UserRound, Trash2, ChevronRight, Lock, Globe2 } from "lucide-react";
-import { Button as MovingBorderButton } from "../../../components/ui/moving-border";
 import { type Character } from "./types";
 
 type RoleChatHomeProps = {
@@ -51,10 +50,9 @@ export function RoleChatHome({
       {/* Sidebar: Character Creation Console */}
       <aside className="lg:col-span-4 2xl:col-span-3 space-y-6">
         <div className="relative group">
-          <div className={`absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-[32px] blur opacity-10 group-hover:opacity-20 transition duration-1000 group-hover:duration-200`}></div>
-          <div className={`relative px-6 py-8 ${isDark ? 'bg-[#16191F]/80 border-white/10' : 'bg-white/80 border-slate-200'} backdrop-blur-3xl rounded-[32px] border transition-all duration-500`}>
+          <div className={`relative px-6 py-8 ${isDark ? 'bg-[#16191F] border-white/10' : 'bg-white border-slate-200'} rounded-[32px] border transition-colors duration-300`}>
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <h2 className={`text-lg font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'} uppercase leading-none`}>
@@ -116,7 +114,7 @@ export function RoleChatHome({
                           onClick={() => setVisibility(option.value)}
                           className={`h-10 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                             active
-                              ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                              ? "bg-indigo-600 text-white"
                               : isDark
                                 ? "text-slate-500 hover:bg-white/5 hover:text-slate-300"
                                 : "text-slate-500 hover:bg-white hover:text-slate-900"
@@ -141,15 +139,15 @@ export function RoleChatHome({
                 </div>
               )}
 
-              <MovingBorderButton
+              <button
                 type="submit"
                 disabled={creating}
-                borderRadius="1rem"
-                containerClassName={`h-14 w-full ${(!creating && persona.trim().length < 10) ? 'opacity-40' : ''}`}
-                className={`${isDark ? 'bg-indigo-600/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200'} font-black text-[10px] uppercase tracking-widest text-indigo-500`}
+                className={`h-14 w-full rounded-2xl border flex items-center justify-center transition-colors disabled:cursor-not-allowed ${
+                  (!creating && persona.trim().length < 10) ? 'opacity-40' : ''
+                } ${isDark ? 'bg-indigo-600/20 border-indigo-500/30 hover:bg-indigo-600/30' : 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100'} font-black text-[10px] uppercase tracking-widest text-indigo-500`}
               >
                 {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>同步实例化</span>}
-              </MovingBorderButton>
+              </button>
             </form>
           </div>
         </div>
@@ -181,8 +179,8 @@ export function RoleChatHome({
               <motion.div
                 key={character.id}
                 whileHover={{ y: -5, scale: 1.01 }}
-                className={`group relative p-8 rounded-[32px] border transition-all duration-500 flex flex-col justify-between cursor-pointer ${
-                  isDark ? "bg-[#1C2026]/40 border-white/5 hover:bg-[#1C2026]/60 hover:border-white/10 hover:shadow-2xl hover:shadow-black/50" : "bg-white border-slate-100 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/5"
+                className={`group relative p-8 rounded-[32px] border transition-colors duration-300 flex flex-col justify-between cursor-pointer ${
+                  isDark ? "bg-[#1C2026] border-white/5 hover:bg-[#222832] hover:border-white/10" : "bg-white border-slate-100 hover:border-indigo-200"
                 }`}
                 onClick={() => startConversation(character)}
               >

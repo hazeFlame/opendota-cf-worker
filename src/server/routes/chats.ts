@@ -107,8 +107,8 @@ chatRoutes.post("/:chatId/messages", async (c) => {
       }
     },
     experimental_transform: smoothStream({
-      delayInMs: 35,
-      chunking: new Intl.Segmenter("zh", { granularity: "grapheme" })
+      delayInMs: 80,
+      chunking: /[\u3002\uff01\uff1f.!?]\s*|\s+/
     })
   });
 

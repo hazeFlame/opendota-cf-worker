@@ -40,7 +40,7 @@ export function RoleChatDialogue({
           className="mb-10 cursor-pointer group/logo"
           onClick={onBack}
         >
-          <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-12 group-hover:rotate-0 transition-transform duration-500">
+          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center transform -rotate-12 group-hover:rotate-0 transition-transform duration-300">
             <Activity className="w-6 h-6 text-white" />
           </div>
         </div>
@@ -118,9 +118,9 @@ export function RoleChatDialogue({
       </div>
 
       {/* Persona Detail (Floating or Overlay if mobile, Side for desktop) */}
-      <div className={`hidden 2xl:flex w-[400px] h-full flex-col p-10 border-l ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-500 overflow-y-auto custom-scrollbar`}>
+      <div className={`hidden 2xl:flex w-[400px] h-full flex-col p-10 border-l ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} transition-colors duration-300 overflow-y-auto custom-scrollbar`}>
          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-500 mb-6">实体底层协议</p>
-         <div className={`p-8 rounded-[32px] ${isDark ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-100 shadow-inner'} border text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'} font-medium mb-10`}>
+         <div className={`p-8 rounded-[32px] ${isDark ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-100'} border text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'} font-medium mb-10`}>
             {selectedCharacter.persona}
          </div>
          

@@ -22,8 +22,8 @@ export function AuthGate({ authLoading, children }: AuthGateProps) {
 export function LoginPrompt({ isDark, onLogin }: { isDark: boolean; onLogin: () => void }) {
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-6">
-      <div className={`max-w-md w-full ${isDark ? "bg-[#16191F]/80 border-white/10" : "bg-white/90 border-slate-200 shadow-xl shadow-slate-200/50"} border rounded-[40px] p-10 text-center backdrop-blur-xl`}>
-        <div className="w-16 h-16 mx-auto mb-8 rounded-3xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/20">
+      <div className={`max-w-md w-full ${isDark ? "bg-[#16191F] border-white/10" : "bg-white border-slate-200"} border rounded-[40px] p-10 text-center`}>
+        <div className="w-16 h-16 mx-auto mb-8 rounded-3xl bg-indigo-600 flex items-center justify-center">
           <ShieldCheck className="w-8 h-8 text-white" />
         </div>
         <h1 className={`text-3xl font-black tracking-tighter mb-4 ${isDark ? "text-white" : "text-slate-900"}`}>

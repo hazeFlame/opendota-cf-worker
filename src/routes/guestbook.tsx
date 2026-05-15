@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useApp } from "../context/AppContext";
-import { Button as MovingBorderButton } from "../components/ui/moving-border";
 
 // --- Types & Helpers ---
 type GuestbookMessage = {
@@ -122,8 +121,8 @@ function GuestbookPage() {
     <div className="flex-1 flex flex-col">
       <main className="relative z-10 max-w-6xl mx-auto w-full px-6 py-12 md:py-24 space-y-12">
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          <div className={`lg:col-span-7 ${isDark ? 'bg-[#1C2026]/50 border-white/5 shadow-2xl' : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50'} backdrop-blur-xl rounded-[48px] border p-8 md:p-12 flex flex-col justify-center transition-colors duration-500`}>
-            <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-3xl flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-8">
+          <div className={`lg:col-span-7 ${isDark ? 'bg-[#1C2026] border-white/5' : 'bg-white border-slate-200'} rounded-[48px] border p-8 md:p-12 flex flex-col justify-center transition-colors duration-300`}>
+            <div className="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center mb-8">
               <MessageCircle className="w-8 h-8 text-white" />
             </div>
             <h1 className={`text-5xl md:text-6xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'} mb-6 uppercase leading-none`}>
@@ -136,7 +135,7 @@ function GuestbookPage() {
 
           <form
             onSubmit={handleSubmit}
-            className={`lg:col-span-5 ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} rounded-[48px] p-8 md:p-10 border shadow-2xl transition-colors duration-500`}
+            className={`lg:col-span-5 ${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} rounded-[48px] p-8 md:p-10 border transition-colors duration-300`}
           >
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -173,16 +172,16 @@ function GuestbookPage() {
               <span className={`text-[10px] font-black uppercase tracking-widest ${remaining < 40 ? "text-amber-500" : "text-slate-500"}`}>
                 还剩 {remaining} 字符
               </span>
-              <MovingBorderButton
+              <button
                 type="submit"
                 disabled={submitting || message.trim().length < 2}
-                borderRadius="1rem"
-                containerClassName="w-40"
-                className={`${isDark ? 'bg-black/20 border-white/5' : 'bg-white border-slate-200'} font-black text-[10px] uppercase tracking-widest text-indigo-500`}
+                className={`h-14 w-40 rounded-2xl border flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isDark ? 'bg-black/20 border-white/5 hover:bg-black/30' : 'bg-white border-slate-200 hover:bg-slate-50'
+                } font-black text-[10px] uppercase tracking-widest text-indigo-500`}
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 <span className="ml-2">发送</span>
-              </MovingBorderButton>
+              </button>
             </div>
           </form>
         </section>
@@ -194,7 +193,7 @@ function GuestbookPage() {
           </div>
         )}
 
-        <section className={`${isDark ? 'bg-[#1C2026]/30 border-white/5' : 'bg-white border-slate-100 shadow-inner'} backdrop-blur-xl rounded-[64px] border p-8 md:p-16 transition-colors duration-500`}>
+        <section className={`${isDark ? 'bg-[#1C2026] border-white/5' : 'bg-white border-slate-100'} rounded-[64px] border p-8 md:p-16 transition-colors duration-300`}>
           <div className="flex items-center justify-between gap-6 mb-12">
             <h2 className={`text-3xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>神经反馈</h2>
             <div className={`flex items-center gap-3 px-5 py-2.5 ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200'} rounded-full border`}>
@@ -228,7 +227,7 @@ function GuestbookPage() {
                 {messages.map((item) => (
                   <article
                     key={item.id}
-                    className={`group ${isDark ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200 hover:shadow-lg hover:shadow-slate-200/50'} rounded-[40px] p-8 border transition-all duration-500`}
+                    className={`group ${isDark ? 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200'} rounded-[40px] p-8 border transition-colors duration-300`}
                   >
                     <div className="flex items-start justify-between gap-6 mb-6">
                       <div>

@@ -115,7 +115,7 @@ function DotaPage() {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`max-w-md mx-auto my-20 aspect-square ${isDark ? 'bg-[#1C2026] border-white/5' : 'bg-white border-slate-100'} border rounded-[64px] flex flex-col items-center justify-center p-12 text-center shadow-2xl`}
+        className={`max-w-md mx-auto my-20 aspect-square ${isDark ? 'bg-[#1C2026] border-white/5' : 'bg-white border-slate-100'} border rounded-[64px] flex flex-col items-center justify-center p-12 text-center`}
       >
         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-8 border border-red-500/20">
           <AlertCircle className="w-10 h-10 text-red-500" />
@@ -124,7 +124,7 @@ function DotaPage() {
         <p className="text-slate-500 text-sm leading-relaxed mb-10 font-medium">{error}</p>
         <button 
           onClick={() => fetchPlayerData(searchId)}
-          className="px-10 py-4 bg-indigo-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-500/20"
+          className="px-10 py-4 bg-indigo-600 text-white rounded-full font-black text-xs uppercase tracking-widest hover:bg-indigo-500 transition-all"
         >
           重试请求
         </button>
@@ -173,14 +173,13 @@ function DotaPage() {
     >
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-4 space-y-8">
-          <div className={`${isDark ? 'bg-[#16191F] border-white/5 shadow-2xl' : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50'} rounded-[48px] p-10 border transition-all duration-500 overflow-hidden relative group`}>
+          <div className={`${isDark ? 'bg-[#16191F] border-white/5' : 'bg-white border-slate-200'} rounded-[48px] p-10 border transition-colors duration-300 overflow-hidden relative group`}>
             <div className="relative z-10 text-center lg:text-left">
               <div className="relative mb-10 inline-block mx-auto lg:mx-0">
-                <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 animate-pulse"></div>
                 <img 
                   src={player.profile.avatarfull} 
                   alt={player.profile.personaname}
-                  className="w-40 h-40 rounded-[48px] border-4 border-white/10 shadow-2xl relative z-10 object-cover mx-auto"
+                  className="w-40 h-40 rounded-[48px] border-4 border-white/10 relative z-10 object-cover mx-auto"
                 />
               </div>
               <h1 className={`text-4xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'} mb-3 uppercase leading-none`}>

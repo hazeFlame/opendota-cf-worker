@@ -38,7 +38,7 @@ src/
 │   ├── dota.tsx           # Dota 数据看板
 │   └── -components/       # 路由私有组件 (局部封装)
 ├── components/            # 📂 全局通用组件
-│   ├── ui/                # 基础 UI (Beams, MovingBorder, etc.)
+│   ├── ui/                # 基础 UI 组件
 │   └── layout/            # 布局外壳 (AppLayout)
 ├── context/               # 📂 全局状态管理 (Theme, Auth, Data)
 ├── lib/                   # 📂 工具函数 (Tailwind Merge, etc.)
